@@ -1,10 +1,10 @@
-import '../models/mortgage.dart';
+import '../models/loan.dart';
 import '../models/extra_payment.dart';
 
 class MonthRow {
   final int monthIndex; // 1-based
   final DateTime date;
-  final double payment; // scheduled P&I payment made
+  final double payment; // scheduled payment made
   final double extra; // extra principal paid this month
   final double interest;
   final double principalPaid; // from scheduled payment
@@ -28,12 +28,17 @@ class SimulationResult {
   final int monthsToPayoff;
   final DateTime payoffDate;
 
+  /// True when the loan never pays off within the simulation bound
+  /// (e.g. credit card payment doesn't cover interest).
+  final bool neverPaysOff;
+
   const SimulationResult({
     required this.schedule,
     required this.totalInterest,
     required this.totalPaid,
     required this.monthsToPayoff,
     required this.payoffDate,
+    this.neverPaysOff = false,
   });
 }
 
@@ -60,33 +65,34 @@ class ComparisonResult {
 }
 
 class AmortizationEngine {
-  /// Simulate the mortgage month-by-month.
+  /// Simulate the loan month-by-month.
   /// Extra payments with weekly cadences are mapped into the months in which
   /// they occur (a month may receive multiple every-N-weeks payments).
   static SimulationResult simulate(
-    Mortgage mortgage,
+    Loan loan,
     List<ExtraPayment> extras,
   ) {
     final activeExtras = extras.where((e) => e.enabled).toList();
-    final monthlyPayment = mortgage.monthlyPayment;
-    final r = mortgage.monthlyRate;
+    final monthlyPayment = loan.monthlyPayment;
+    final r = loan.monthlyRate;
 
-    double balance = mortgage.principal;
+    double balance = loan.principal;
     double totalInterest = 0;
     double totalPaid = 0;
     final schedule = <MonthRow>[];
 
     // Pre-compute week-based payment dates for everyNWeeks cadence.
-    // Map: monthKey (year*12+month) -> total extra from weekly cadences
     final weeklyExtraByMonth = <int, double>{};
+    // Bound: amortized -> term + buffer; fixed payment -> 50 years max.
+    final maxMonths = loan.paymentMode == PaymentMode.amortized
+        ? loan.termMonths + 240
+        : 600;
     for (final e in activeExtras) {
       if (e.cadence != CadenceType.everyNWeeks) continue;
-      final start = e.startDate ?? mortgage.startDate;
+      final start = e.startDate ?? loan.startDate;
       DateTime d = start;
-      // generate far enough into the future (termYears + buffer)
       final end = DateTime(
-          mortgage.startDate.year + mortgage.termYears + 2,
-          mortgage.startDate.month);
+          loan.startDate.year + (maxMonths ~/ 12) + 2, loan.startDate.month);
       while (d.isBefore(end)) {
         final key = d.year * 12 + (d.month - 1);
         weeklyExtraByMonth[key] = (weeklyExtraByMonth[key] ?? 0) + e.amount;
@@ -94,12 +100,12 @@ class AmortizationEngine {
       }
     }
 
-    final maxMonths = mortgage.termMonths + 240; // safety bound
     int m = 0;
+    bool stalled = false;
     while (balance > 0.005 && m < maxMonths) {
       m++;
-      final date = DateTime(
-          mortgage.startDate.year, mortgage.startDate.month + m - 1, 1);
+      final date =
+          DateTime(loan.startDate.year, loan.startDate.month + m - 1, 1);
 
       final interest = balance * r;
       double scheduled = monthlyPayment;
@@ -109,7 +115,7 @@ class AmortizationEngine {
       double extra = 0;
       final monthKey = date.year * 12 + (date.month - 1);
       for (final e in activeExtras) {
-        final start = e.startDate ?? mortgage.startDate;
+        final start = e.startDate ?? loan.startDate;
         final startKey = start.year * 12 + (start.month - 1);
         switch (e.cadence) {
           case CadenceType.monthly:
@@ -141,9 +147,35 @@ class AmortizationEngine {
       }
       extra += weeklyExtraByMonth[monthKey] ?? 0;
 
+      // If principal part is not positive and no extra, the balance grows —
+      // clamp scheduled payment to cover at least interest so the schedule
+      // remains meaningful, and flag as stalled if nothing reduces principal.
+      if (principalPart <= 0 && extra <= 0) {
+        stalled = true;
+        // Balance grows by unpaid interest.
+        final unpaid = interest - scheduled;
+        totalInterest += interest;
+        totalPaid += scheduled;
+        balance += unpaid;
+        schedule.add(MonthRow(
+          monthIndex: m,
+          date: date,
+          payment: scheduled,
+          extra: 0,
+          interest: interest,
+          principalPaid: principalPart,
+          balance: balance,
+        ));
+        // If it's clearly diverging, stop early after a year of growth.
+        if (m > 12 && schedule.length > 12) {
+          final prev = schedule[schedule.length - 13].balance;
+          if (balance >= prev) break;
+        }
+        continue;
+      }
+
       // Final payment adjustment
       if (principalPart + extra >= balance) {
-        // Only pay what's needed
         if (principalPart >= balance) {
           principalPart = balance;
           scheduled = principalPart + interest;
@@ -170,9 +202,9 @@ class AmortizationEngine {
       ));
     }
 
-    final payoffDate = schedule.isNotEmpty
-        ? schedule.last.date
-        : mortgage.startDate;
+    final neverPaysOff = balance > 0.005 || stalled && balance > 0.005;
+    final payoffDate =
+        schedule.isNotEmpty ? schedule.last.date : loan.startDate;
 
     return SimulationResult(
       schedule: schedule,
@@ -180,15 +212,13 @@ class AmortizationEngine {
       totalPaid: totalPaid,
       monthsToPayoff: schedule.length,
       payoffDate: payoffDate,
+      neverPaysOff: neverPaysOff,
     );
   }
 
-  static ComparisonResult compare(
-    Mortgage mortgage,
-    List<ExtraPayment> extras,
-  ) {
-    final baseline = simulate(mortgage, const []);
-    final accelerated = simulate(mortgage, extras);
+  static ComparisonResult compare(Loan loan) {
+    final baseline = simulate(loan, const []);
+    final accelerated = simulate(loan, loan.extras);
     return ComparisonResult(baseline: baseline, accelerated: accelerated);
   }
 }

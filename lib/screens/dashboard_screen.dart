@@ -2,70 +2,80 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../main.dart';
+import '../models/loan.dart';
 import '../services/app_state.dart';
 import '../widgets/payoff_chart.dart';
-import 'setup_screen.dart';
+import 'loan_edit_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
-  const DashboardScreen({super.key});
+  final Loan loan;
+  const DashboardScreen({super.key, required this.loan});
 
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final mortgage = state.mortgage!;
-    final comparison = state.comparison!;
+    final comparison = state.comparisonFor(loan);
     final money = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
     final money2 = NumberFormat.currency(symbol: '\$', decimalDigits: 2);
 
-    // Current position: months elapsed since start
-    final now = DateTime.now();
-    final elapsed = (now.year - mortgage.startDate.year) * 12 +
-        (now.month - mortgage.startDate.month) +
-        1;
-    final schedule = comparison.accelerated.schedule;
-    final clampedElapsed = elapsed.clamp(0, schedule.length);
-    final currentBalance = clampedElapsed <= 0
-        ? mortgage.principal
-        : schedule[clampedElapsed - 1].balance;
+    final currentBalance = state.currentBalance(loan);
     final paidOffPct =
-        ((mortgage.principal - currentBalance) / mortgage.principal * 100)
+        ((loan.principal - currentBalance) / loan.principal * 100)
             .clamp(0, 100);
 
-    final activeStrategies = state.extras.where((e) => e.enabled).length;
+    final activeStrategies = loan.extras.where((e) => e.enabled).length;
+    final neverPaysOff = comparison.accelerated.neverPaysOff;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 32),
+          const SizedBox(height: 16),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Text(
-                'Mortgage',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w200,
-                  color: kInk,
-                  letterSpacing: 0.5,
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: const Icon(Icons.arrow_back, size: 20, color: kInk),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  loan.name,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w200,
+                    color: kInk,
+                    letterSpacing: 0.5,
+                  ),
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.edit_outlined, size: 18, color: kSubtle),
+                icon:
+                    const Icon(Icons.edit_outlined, size: 18, color: kSubtle),
                 onPressed: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => SetupScreen(existing: mortgage),
+                      builder: (_) => LoanEditScreen(existing: loan),
                     ),
                   );
                 },
               ),
             ],
           ),
+          const SizedBox(height: 4),
+          Text(
+            '${loan.type.label} · ${loan.annualRate}%',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w300,
+              color: kSubtle,
+            ),
+          ),
           const SizedBox(height: 24),
-          // Big balance
           Text(
             money.format(currentBalance),
             style: const TextStyle(
@@ -77,7 +87,7 @@ class DashboardScreen extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'remaining of ${money.format(mortgage.principal)}',
+            'remaining of ${money.format(loan.principal)}',
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w300,
@@ -85,7 +95,6 @@ class DashboardScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          // Thin progress line
           ClipRRect(
             borderRadius: BorderRadius.circular(2),
             child: LinearProgressIndicator(
@@ -104,8 +113,27 @@ class DashboardScreen extends StatelessWidget {
               color: kSubtle,
             ),
           ),
+          if (neverPaysOff) ...[
+            const SizedBox(height: 20),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                border: Border.all(color: const Color(0xFFE8C4BC)),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Text(
+                'Your payment doesn\'t reduce the balance — it never pays off at this rate. Increase the monthly payment or add strategies.',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w300,
+                  color: Color(0xFFB3402E),
+                  height: 1.5,
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 40),
-          // Chart section
           const Text(
             'PAYOFF PROJECTION',
             style: TextStyle(
@@ -133,7 +161,12 @@ class DashboardScreen extends StatelessWidget {
           ),
           const SizedBox(height: 40),
           const Divider(),
-          _statRow('Monthly payment', money2.format(mortgage.monthlyPayment)),
+          _statRow(
+            loan.paymentMode == PaymentMode.fixedPayment
+                ? 'Monthly payment (set)'
+                : 'Monthly payment',
+            money2.format(loan.monthlyPayment),
+          ),
           const Divider(),
           _statRow(
             'Interest saved',
@@ -149,8 +182,10 @@ class DashboardScreen extends StatelessWidget {
           const Divider(),
           _statRow(
             'Payoff date',
-            DateFormat('MMM yyyy')
-                .format(comparison.accelerated.payoffDate),
+            neverPaysOff
+                ? '—'
+                : DateFormat('MMM yyyy')
+                    .format(comparison.accelerated.payoffDate),
           ),
           const Divider(),
           _statRow(
@@ -158,10 +193,7 @@ class DashboardScreen extends StatelessWidget {
             money.format(comparison.accelerated.totalInterest),
           ),
           const Divider(),
-          _statRow(
-            'Active strategies',
-            '$activeStrategies',
-          ),
+          _statRow('Active strategies', '$activeStrategies'),
           const Divider(),
           const SizedBox(height: 40),
         ],

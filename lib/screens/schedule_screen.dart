@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../main.dart';
+import '../models/loan.dart';
 import '../services/app_state.dart';
 
 class ScheduleScreen extends StatefulWidget {
-  const ScheduleScreen({super.key});
+  final Loan loan;
+  const ScheduleScreen({super.key, required this.loan});
 
   @override
   State<ScheduleScreen> createState() => _ScheduleScreenState();
@@ -17,7 +19,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final comparison = state.comparison!;
+    final comparison = state.comparisonFor(widget.loan);
     final schedule = comparison.accelerated.schedule;
     final money = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
 
@@ -25,18 +27,30 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(32, 32, 32, 0),
+          padding: const EdgeInsets.fromLTRB(32, 16, 32, 0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Schedule',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w200,
-                  color: kInk,
-                  letterSpacing: 0.5,
-                ),
+              Row(
+                children: [
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: const Icon(Icons.arrow_back,
+                        size: 20, color: kInk),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                  const SizedBox(width: 16),
+                  const Text(
+                    'Schedule',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w200,
+                      color: kInk,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
               ),
               Row(
                 children: [
@@ -56,7 +70,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32),
           child: Text(
-            'Payoff ${DateFormat('MMMM yyyy').format(comparison.accelerated.payoffDate)} · ${schedule.length} payments',
+            comparison.accelerated.neverPaysOff
+                ? '${widget.loan.name} · balance not decreasing'
+                : '${widget.loan.name} · payoff ${DateFormat('MMMM yyyy').format(comparison.accelerated.payoffDate)} · ${schedule.length} payments',
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w300,

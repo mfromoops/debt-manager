@@ -2,36 +2,45 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../main.dart';
+import '../models/loan.dart';
 import '../models/extra_payment.dart';
 import '../services/amortization_engine.dart';
 import '../services/app_state.dart';
 import 'strategy_edit_screen.dart';
 
 class StrategiesScreen extends StatelessWidget {
-  const StrategiesScreen({super.key});
+  final Loan loan;
+  const StrategiesScreen({super.key, required this.loan});
 
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final mortgage = state.mortgage!;
-    final comparison = state.comparison!;
+    final comparison = state.comparisonFor(loan);
     final money = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(32, 32, 16, 0),
+          padding: const EdgeInsets.fromLTRB(32, 16, 16, 0),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Strategies',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w200,
-                  color: kInk,
-                  letterSpacing: 0.5,
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: const Icon(Icons.arrow_back, size: 20, color: kInk),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+              const SizedBox(width: 16),
+              const Expanded(
+                child: Text(
+                  'Strategies',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w200,
+                    color: kInk,
+                    letterSpacing: 0.5,
+                  ),
                 ),
               ),
               IconButton(
@@ -39,7 +48,7 @@ class StrategiesScreen extends StatelessWidget {
                 onPressed: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => const StrategyEditScreen(),
+                      builder: (_) => StrategyEditScreen(loanId: loan.id),
                     ),
                   );
                 },
@@ -50,32 +59,28 @@ class StrategiesScreen extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(32, 4, 32, 0),
           child: Text(
-            state.extras.isEmpty
-                ? 'Add extra payments to pay off sooner.'
-                : 'Saving ${money.format(comparison.interestSaved)} in interest · ${comparison.timeSavedLabel} sooner',
+            loan.extras.isEmpty
+                ? '${loan.name} · add extra payments to pay off sooner.'
+                : '${loan.name} · saving ${money.format(comparison.interestSaved)} · ${comparison.timeSavedLabel} sooner',
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w300,
-              color: state.extras.isEmpty ? kSubtle : kAccent,
+              color: loan.extras.isEmpty ? kSubtle : kAccent,
             ),
           ),
         ),
         const SizedBox(height: 24),
         Expanded(
-          child: state.extras.isEmpty
+          child: loan.extras.isEmpty
               ? _emptyState(context)
               : ListView.separated(
                   padding: const EdgeInsets.only(bottom: 24),
-                  itemCount: state.extras.length,
+                  itemCount: loan.extras.length,
                   separatorBuilder: (_, _) =>
                       const Divider(indent: 32, endIndent: 32),
                   itemBuilder: (context, i) {
-                    final e = state.extras[i];
-                    return _StrategyRow(
-                      extra: e,
-                      mortgage: mortgage,
-                      allExtras: state.extras,
-                    );
+                    final e = loan.extras[i];
+                    return _StrategyRow(extra: e, loan: loan);
                   },
                 ),
         ),
@@ -114,7 +119,7 @@ class StrategiesScreen extends StatelessWidget {
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => const StrategyEditScreen(),
+                  builder: (_) => StrategyEditScreen(loanId: loan.id),
                 ),
               );
             },
@@ -128,14 +133,9 @@ class StrategiesScreen extends StatelessWidget {
 
 class _StrategyRow extends StatelessWidget {
   final ExtraPayment extra;
-  final dynamic mortgage;
-  final List<ExtraPayment> allExtras;
+  final Loan loan;
 
-  const _StrategyRow({
-    required this.extra,
-    required this.mortgage,
-    required this.allExtras,
-  });
+  const _StrategyRow({required this.extra, required this.loan});
 
   @override
   Widget build(BuildContext context) {
@@ -143,17 +143,18 @@ class _StrategyRow extends StatelessWidget {
 
     // Marginal impact: interest saved by this strategy alone (on top of others)
     final withoutThis =
-        allExtras.where((x) => x.id != extra.id && x.enabled).toList();
+        loan.extras.where((x) => x.id != extra.id && x.enabled).toList();
     final withThis = [...withoutThis, extra.copyWith(enabled: true)];
-    final simWithout = AmortizationEngine.simulate(mortgage, withoutThis);
-    final simWith = AmortizationEngine.simulate(mortgage, withThis);
+    final simWithout = AmortizationEngine.simulate(loan, withoutThis);
+    final simWith = AmortizationEngine.simulate(loan, withThis);
     final marginalSaving = simWithout.totalInterest - simWith.totalInterest;
 
     return InkWell(
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => StrategyEditScreen(existing: extra),
+            builder: (_) =>
+                StrategyEditScreen(loanId: loan.id, existing: extra),
           ),
         );
       },
@@ -199,7 +200,7 @@ class _StrategyRow extends StatelessWidget {
             Switch(
               value: extra.enabled,
               onChanged: (v) =>
-                  context.read<AppState>().toggleExtra(extra.id, v),
+                  context.read<AppState>().toggleExtra(loan.id, extra.id, v),
             ),
           ],
         ),

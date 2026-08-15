@@ -7,8 +7,9 @@ import '../models/extra_payment.dart';
 import '../services/app_state.dart';
 
 class StrategyEditScreen extends StatefulWidget {
+  final String loanId;
   final ExtraPayment? existing;
-  const StrategyEditScreen({super.key, this.existing});
+  const StrategyEditScreen({super.key, required this.loanId, this.existing});
 
   @override
   State<StrategyEditScreen> createState() => _StrategyEditScreenState();
@@ -82,7 +83,7 @@ class _StrategyEditScreenState extends State<StrategyEditScreen> {
     final interval = int.tryParse(_intervalCtrl.text) ?? 1;
 
     if (widget.existing != null) {
-      state.updateExtra(widget.existing!.copyWith(
+      state.updateExtra(widget.loanId, widget.existing!.copyWith(
         name: name,
         amount: double.parse(_amountCtrl.text.replaceAll(',', '')),
         cadence: _cadence,
@@ -92,7 +93,7 @@ class _StrategyEditScreenState extends State<StrategyEditScreen> {
         startDate: _startDate,
       ));
     } else {
-      state.addExtra(ExtraPayment(
+      state.addExtra(widget.loanId, ExtraPayment(
         id: DateTime.now().microsecondsSinceEpoch.toString(),
         name: name,
         amount: double.parse(_amountCtrl.text.replaceAll(',', '')),
@@ -107,7 +108,7 @@ class _StrategyEditScreenState extends State<StrategyEditScreen> {
   }
 
   void _delete() {
-    context.read<AppState>().removeExtra(widget.existing!.id);
+    context.read<AppState>().removeExtra(widget.loanId, widget.existing!.id);
     Navigator.of(context).pop();
   }
 
