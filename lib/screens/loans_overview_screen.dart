@@ -6,6 +6,7 @@ import '../models/loan.dart';
 import '../services/app_state.dart';
 import 'loan_edit_screen.dart';
 import 'loan_detail_shell.dart';
+import 'planner_screen.dart';
 
 class LoansOverviewScreen extends StatelessWidget {
   const LoansOverviewScreen({super.key});
@@ -91,6 +92,59 @@ class LoansOverviewScreen extends StatelessWidget {
                         ),
                       ),
                     ],
+                    const SizedBox(height: 28),
+                    // Payoff Planner entry
+                    InkWell(
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) => const PlannerScreen()),
+                        );
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: kAccent),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.route_outlined,
+                                size: 18, color: kAccent),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Payoff Planner',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w400,
+                                      color: kAccent,
+                                    ),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'Avalanche vs snowball — where should extra money go?',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w300,
+                                      color: kSubtle,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(Icons.chevron_right,
+                                size: 18, color: kSubtle),
+                          ],
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 36),
                     const Text(
                       'YOUR LOANS',

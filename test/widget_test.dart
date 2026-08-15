@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_app/models/loan.dart';
 import 'package:flutter_app/models/extra_payment.dart';
 import 'package:flutter_app/services/amortization_engine.dart';
+import 'package:flutter_app/services/payoff_planner.dart';
 
 void main() {
   test('Amortized loan computes standard payoff', () {
@@ -100,5 +101,107 @@ void main() {
     );
     final result = AmortizationEngine.simulate(card, card.extras);
     expect(result.neverPaysOff, isFalse);
+  });
+
+  group('PayoffPlanner', () {
+    List<Loan> makeLoans() => [
+          Loan(
+            id: 'm',
+            name: 'Mortgage',
+            type: LoanType.mortgage,
+            principal: 200000,
+            annualRate: 5.0,
+            termYears: 30,
+            startDate: DateTime(2024, 1),
+            paymentMode: PaymentMode.amortized,
+          ),
+          Loan(
+            id: 'c',
+            name: 'Card',
+            type: LoanType.creditCard,
+            principal: 5000,
+            annualRate: 22.0,
+            startDate: DateTime(2025, 1),
+            paymentMode: PaymentMode.fixedPayment,
+            fixedMonthlyPayment: 200,
+          ),
+          Loan(
+            id: 'p',
+            name: 'Personal',
+            type: LoanType.personalLoan,
+            principal: 12000,
+            annualRate: 9.0,
+            termYears: 5,
+            startDate: DateTime(2024, 6),
+            paymentMode: PaymentMode.amortized,
+          ),
+        ];
+
+    Map<String, double> balancesOf(List<Loan> loans) =>
+        {for (final l in loans) l.id: l.principal};
+
+    test('Avalanche targets highest rate first', () {
+      final loans = makeLoans();
+      final plan = PayoffPlanner.plan(
+        loans: loans,
+        startingBalances: balancesOf(loans),
+        method: PlanMethod.avalanche,
+        monthlyBudget: 300,
+      );
+      expect(plan.neverPaysOff, isFalse);
+      // Card (22%) must be first to pay off under avalanche.
+      expect(plan.loanResults.first.loanId, 'c');
+      expect(plan.loanResults.length, 3);
+    });
+
+    test('Snowball targets smallest balance first', () {
+      final loans = makeLoans();
+      final plan = PayoffPlanner.plan(
+        loans: loans,
+        startingBalances: balancesOf(loans),
+        method: PlanMethod.snowball,
+        monthlyBudget: 300,
+      );
+      // Card also has the smallest balance here, so it's first too.
+      expect(plan.loanResults.first.loanId, 'c');
+    });
+
+    test('Budget reduces time to debt-free and interest', () {
+      final loans = makeLoans();
+      final noBudget = PayoffPlanner.plan(
+        loans: loans,
+        startingBalances: balancesOf(loans),
+        method: PlanMethod.avalanche,
+        monthlyBudget: 0,
+      );
+      final withBudget = PayoffPlanner.plan(
+        loans: loans,
+        startingBalances: balancesOf(loans),
+        method: PlanMethod.avalanche,
+        monthlyBudget: 500,
+      );
+      expect(withBudget.monthsToDebtFree,
+          lessThan(noBudget.monthsToDebtFree));
+      expect(
+          withBudget.totalInterest, lessThan(noBudget.totalInterest));
+    });
+
+    test('Avalanche saves at least as much interest as snowball', () {
+      final loans = makeLoans();
+      final avalanche = PayoffPlanner.plan(
+        loans: loans,
+        startingBalances: balancesOf(loans),
+        method: PlanMethod.avalanche,
+        monthlyBudget: 400,
+      );
+      final snowball = PayoffPlanner.plan(
+        loans: loans,
+        startingBalances: balancesOf(loans),
+        method: PlanMethod.snowball,
+        monthlyBudget: 400,
+      );
+      expect(avalanche.totalInterest,
+          lessThanOrEqualTo(snowball.totalInterest + 0.01));
+    });
   });
 }
