@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'services/auth_service.dart';
 import 'services/app_state.dart';
+import 'services/sync_service.dart';
 import 'screens/home_shell.dart';
 
 // Minimalist palette - Style 3
@@ -13,9 +15,21 @@ void main() {
   WidgetsFlutterBinding.ensureInitialized();
   final appState = AppState();
   appState.load();
+  final authService = AuthService();
+  authService.load();
+  final syncService = SyncService();
+  appState.configureSync(syncService);
+  authService.addListener(() {
+    appState.setSyncSession(
+      authService.isAuthenticated ? authService.validAccessToken : null,
+    );
+  });
   runApp(
-    ChangeNotifierProvider.value(
-      value: appState,
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: appState),
+        ChangeNotifierProvider.value(value: authService),
+      ],
       child: const MortgageTrackerApp(),
     ),
   );

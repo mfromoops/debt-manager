@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../main.dart';
 import '../models/loan.dart';
+import '../services/auth_service.dart';
 import '../services/app_state.dart';
 import 'loan_edit_screen.dart';
 import 'loan_detail_shell.dart';
@@ -31,6 +32,7 @@ class LoansOverviewScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
+    final auth = context.watch<AuthService>();
     final money = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
 
     return Scaffold(
@@ -55,10 +57,76 @@ class LoansOverviewScreen extends StatelessWidget {
                             letterSpacing: 0.5,
                           ),
                         ),
-                        IconButton(
-                          icon:
-                              const Icon(Icons.add, size: 22, color: kAccent),
-                          onPressed: () => _addLoan(context),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (state.syncing)
+                              const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: kAccent,
+                                ),
+                              )
+                            else if (state.syncError != null)
+                              Tooltip(
+                                message: state.syncError!,
+                                child: const Icon(
+                                  Icons.cloud_off_outlined,
+                                  size: 20,
+                                  color: Color(0xFFB3402E),
+                                ),
+                              )
+                            else
+                              const Tooltip(
+                                message: 'Synced',
+                                child: Icon(
+                                  Icons.cloud_done_outlined,
+                                  size: 20,
+                                  color: kSubtle,
+                                ),
+                              ),
+                            const SizedBox(width: 8),
+                            PopupMenuButton<String>(
+                              tooltip: auth.user?.displayName ?? 'Account',
+                              icon: const Icon(
+                                Icons.account_circle_outlined,
+                                size: 22,
+                                color: kSubtle,
+                              ),
+                              onSelected: (value) {
+                                if (value == 'sign-out') {
+                                  auth.signOut();
+                                }
+                              },
+                              itemBuilder: (context) => [
+                                PopupMenuItem<String>(
+                                  enabled: false,
+                                  child: Text(
+                                    auth.user?.email ?? 'Signed in',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: kSubtle,
+                                    ),
+                                  ),
+                                ),
+                                const PopupMenuDivider(),
+                                const PopupMenuItem<String>(
+                                  value: 'sign-out',
+                                  child: Text('Sign out'),
+                                ),
+                              ],
+                            ),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.add,
+                                size: 22,
+                                color: kAccent,
+                              ),
+                              onPressed: () => _addLoan(context),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -179,12 +247,44 @@ class LoansOverviewScreen extends StatelessWidget {
   }
 
   Widget _emptyState(BuildContext context) {
+    final auth = context.watch<AuthService>();
+
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 60),
+          Align(
+            alignment: Alignment.centerRight,
+            child: PopupMenuButton<String>(
+              tooltip: auth.user?.displayName ?? 'Account',
+              icon: const Icon(
+                Icons.account_circle_outlined,
+                size: 22,
+                color: kSubtle,
+              ),
+              onSelected: (value) {
+                if (value == 'sign-out') {
+                  auth.signOut();
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem<String>(
+                  enabled: false,
+                  child: Text(
+                    auth.user?.email ?? 'Signed in',
+                    style: const TextStyle(fontSize: 12, color: kSubtle),
+                  ),
+                ),
+                const PopupMenuDivider(),
+                const PopupMenuItem<String>(
+                  value: 'sign-out',
+                  child: Text('Sign out'),
+                ),
+              ],
+            ),
+          ),
           const Text(
             'Debts',
             style: TextStyle(

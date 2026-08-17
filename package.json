@@ -1,0 +1,14 @@
+{
+  "name": "debt-manager-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "auth:dev": "pnpm --filter debt-manager-auth dev",
+    "auth:deploy": "pnpm --filter debt-manager-auth deploy",
+    "auth:test": "pnpm --filter debt-manager-auth test",
+    "sync:dev": "pnpm --filter debt-manager-sync dev -- --port 8788",
+    "sync:deploy": "pnpm --filter debt-manager-sync deploy",
+    "sync:typecheck": "pnpm --filter debt-manager-sync exec tsc --noEmit"
+  },
+  "packageManager": "pnpm@11.7.0"
+}

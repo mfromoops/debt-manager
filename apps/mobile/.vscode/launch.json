@@ -1,0 +1,29 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debt Manager Web",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "chrome",
+      "toolArgs": [
+        "--dart-define=WORKOS_CLIENT_ID=client_01M07XGHQJENJASNY4P2CM2E11",
+        "--dart-define=AUTH_BACKEND_BASE_URL=http://localhost:8787",
+        "--dart-define=SYNC_BACKEND_BASE_URL=http://localhost:8788",
+        "--dart-define=WORKOS_REDIRECT_URI=http://localhost:5173/",
+        "--dart-define=WORKOS_PROVIDER=GoogleOAuth"
+      ]
+    },
+    {
+      "name": "Debt Manager Android",
+      "request": "launch",
+      "type": "dart",
+      "toolArgs": [
+        "--dart-define=WORKOS_CLIENT_ID=client_01M07XGHQJENJASNY4P2CM2E11",
+        "--dart-define=AUTH_BACKEND_BASE_URL=http://10.0.2.2:8787",
+        "--dart-define=SYNC_BACKEND_BASE_URL=http://10.0.2.2:8788",
+        "--dart-define=WORKOS_PROVIDER=GoogleOAuth"
+      ]
+    }
+  ]
+}

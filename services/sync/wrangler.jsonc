@@ -1,0 +1,36 @@
+{
+  "name": "debt-manager-sync",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-03-10",
+  "migrations": [
+    {
+      "new_sqlite_classes": [
+        "SyncState"
+      ],
+      "tag": "v1"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "class_name": "SyncState",
+        "name": "SYNC_STATE"
+      }
+    ]
+  },
+  "vars": {
+    "WORKOS_CLIENT_ID": "client_01M07XGHQJENJASNY4P2CM2E11",
+    "ALLOWED_ORIGIN": "*"
+  },
+  "observability": {
+    "enabled": true
+  },
+ "routes": [
+		{
+			"pattern": "debt-manager-sync.mariofloresdev.com",
+			"custom_domain": true
+		}
+	]
+
+  
+}
