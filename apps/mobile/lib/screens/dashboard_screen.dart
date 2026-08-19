@@ -22,9 +22,13 @@ class DashboardScreen extends StatelessWidget {
 
     final currentBalance = state.currentBalance(loan);
     final paidDown = state.progressPaidDown(loan);
+    final nextPaymentDate = state.nextPaymentDate(loan);
+    final strategyPayment = state.nextPaymentWithStrategies(loan);
     final paidOffPct =
-        ((loan.principal - currentBalance) / loan.principal * 100)
-            .clamp(0, 100);
+        ((loan.principal - currentBalance) / loan.principal * 100).clamp(
+          0,
+          100,
+        );
 
     final activeStrategies = loan.extras.where((e) => e.enabled).length;
     final neverPaysOff = comparison.accelerated.neverPaysOff;
@@ -58,8 +62,7 @@ class DashboardScreen extends StatelessWidget {
                 ),
               ),
               IconButton(
-                icon:
-                    const Icon(Icons.edit_outlined, size: 18, color: kSubtle),
+                icon: const Icon(Icons.edit_outlined, size: 18, color: kSubtle),
                 onPressed: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
@@ -118,6 +121,13 @@ class DashboardScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
+          _DebtPaymentSummary(
+            loan: loan,
+            nextPaymentDate: nextPaymentDate,
+            strategyPayment: strategyPayment,
+            isPaidOff: currentBalance <= 0.005,
+          ),
+          const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
@@ -159,17 +169,32 @@ class DashboardScreen extends StatelessWidget {
           const SizedBox(height: 20),
           PayoffChart(comparison: comparison),
           const SizedBox(height: 12),
-          Row(
+          Wrap(
+            spacing: 20,
+            runSpacing: 8,
             children: [
-              _legendDot(kSubtle.withValues(alpha: 0.45)),
-              const SizedBox(width: 6),
-              const Text('Standard',
-                  style: TextStyle(fontSize: 11, color: kSubtle)),
-              const SizedBox(width: 20),
-              _legendDot(kAccent),
-              const SizedBox(width: 6),
-              const Text('With strategies',
-                  style: TextStyle(fontSize: 11, color: kSubtle)),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _legendDot(kSubtle.withValues(alpha: 0.45)),
+                  const SizedBox(width: 6),
+                  const Text(
+                    'Standard',
+                    style: TextStyle(fontSize: 11, color: kSubtle),
+                  ),
+                ],
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _legendDot(kAccent),
+                  const SizedBox(width: 6),
+                  const Text(
+                    'With strategies',
+                    style: TextStyle(fontSize: 11, color: kSubtle),
+                  ),
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 40),
@@ -202,8 +227,9 @@ class DashboardScreen extends StatelessWidget {
             'Payoff date',
             neverPaysOff
                 ? '—'
-                : DateFormat('MMM yyyy')
-                    .format(comparison.accelerated.payoffDate),
+                : DateFormat(
+                    'MMM yyyy',
+                  ).format(comparison.accelerated.payoffDate),
           ),
           const Divider(),
           _statRow(
@@ -220,16 +246,12 @@ class DashboardScreen extends StatelessWidget {
   }
 
   Widget _legendDot(Color color) => Container(
-        width: 8,
-        height: 8,
-        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-      );
+    width: 8,
+    height: 8,
+    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+  );
 
-  Widget _progressHistory(
-    BuildContext context,
-    Loan loan,
-    NumberFormat money,
-  ) {
+  Widget _progressHistory(BuildContext context, Loan loan, NumberFormat money) {
     final entries = [...loan.progressEntries]
       ..sort((a, b) => b.date.compareTo(a.date));
     return Column(
@@ -281,9 +303,10 @@ class DashboardScreen extends StatelessWidget {
                     if (value == 'edit') {
                       _showProgressSheet(context, loan, existing: entry);
                     } else if (value == 'delete') {
-                      context
-                          .read<AppState>()
-                          .removeProgressEntry(loan.id, entry.id);
+                      context.read<AppState>().removeProgressEntry(
+                        loan.id,
+                        entry.id,
+                      );
                     }
                   },
                   itemBuilder: (context) => const [
@@ -306,20 +329,28 @@ class DashboardScreen extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w300,
-              color: kSubtle,
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w300,
+                color: kSubtle,
+              ),
             ),
           ),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w400,
-              color: valueColor,
+          const SizedBox(width: 16),
+          Flexible(
+            child: Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.end,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w400,
+                color: valueColor,
+              ),
             ),
           ),
         ],
@@ -337,6 +368,154 @@ class DashboardScreen extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: Colors.white,
       builder: (_) => _ProgressSheet(loan: loan, existing: existing),
+    );
+  }
+}
+
+class _DebtPaymentSummary extends StatelessWidget {
+  final Loan loan;
+  final DateTime nextPaymentDate;
+  final double strategyPayment;
+  final bool isPaidOff;
+
+  const _DebtPaymentSummary({
+    required this.loan,
+    required this.nextPaymentDate,
+    required this.strategyPayment,
+    required this.isPaidOff,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final money = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
+    final hasExtra = strategyPayment > loan.monthlyPayment + 0.005;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3F7F4),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFDCE8E0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'NEXT PAYMENT',
+            style: TextStyle(
+              fontSize: 10,
+              letterSpacing: 1.3,
+              fontWeight: FontWeight.w500,
+              color: kAccent,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _PaymentDetail(
+                  label: 'MINIMUM DUE',
+                  value: isPaidOff ? '—' : money.format(loan.monthlyPayment),
+                  valueKey: const Key('detail-minimum-due'),
+                ),
+              ),
+              const _PaymentDetailDivider(),
+              Expanded(
+                child: _PaymentDetail(
+                  label: 'PAYMENT DATE',
+                  value: isPaidOff
+                      ? 'Paid off'
+                      : DateFormat('MMM d').format(nextPaymentDate),
+                  valueKey: const Key('detail-next-payment-date'),
+                ),
+              ),
+              const _PaymentDetailDivider(),
+              Expanded(
+                child: _PaymentDetail(
+                  label: 'WITH STRATEGY',
+                  value: isPaidOff ? '—' : money.format(strategyPayment),
+                  valueKey: const Key('detail-strategy-payment'),
+                  highlighted: hasExtra && !isPaidOff,
+                ),
+              ),
+            ],
+          ),
+          if (hasExtra && !isPaidOff) ...[
+            const SizedBox(height: 14),
+            Text(
+              '${money.format(strategyPayment - loan.monthlyPayment)} extra is scheduled with your active strategies.',
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w300,
+                color: kSubtle,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _PaymentDetail extends StatelessWidget {
+  final String label;
+  final String value;
+  final Key valueKey;
+  final bool highlighted;
+
+  const _PaymentDetail({
+    required this.label,
+    required this.value,
+    required this.valueKey,
+    this.highlighted = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 8,
+            letterSpacing: 0.7,
+            fontWeight: FontWeight.w500,
+            color: kSubtle,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          value,
+          key: valueKey,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: highlighted ? kAccent : kInk,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PaymentDetailDivider extends StatelessWidget {
+  const _PaymentDetailDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: 34,
+      margin: const EdgeInsets.symmetric(horizontal: 7),
+      color: const Color(0xFFDCE8E0),
     );
   }
 }
@@ -385,8 +564,8 @@ class _ProgressSheetState extends State<_ProgressSheet> {
     final initialDate = _date.isBefore(widget.loan.startDate)
         ? widget.loan.startDate
         : _date.isAfter(now)
-            ? now
-            : _date;
+        ? now
+        : _date;
     final picked = await showDatePicker(
       context: context,
       initialDate: initialDate,
@@ -408,7 +587,8 @@ class _ProgressSheetState extends State<_ProgressSheet> {
     }
 
     final entry = ProgressEntry(
-      id: widget.existing?.id ??
+      id:
+          widget.existing?.id ??
           DateTime.now().microsecondsSinceEpoch.toString(),
       date: _date,
       paymentAmount: payment,

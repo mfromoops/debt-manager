@@ -30,18 +30,18 @@ void main() {
         ChangeNotifierProvider.value(value: appState),
         ChangeNotifierProvider.value(value: authService),
       ],
-      child: const MortgageTrackerApp(),
+      child: const DebtManagerApp(),
     ),
   );
 }
 
-class MortgageTrackerApp extends StatelessWidget {
-  const MortgageTrackerApp({super.key});
+class DebtManagerApp extends StatelessWidget {
+  const DebtManagerApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Mortgage Tracker',
+      title: 'Debt Manager',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
@@ -71,14 +71,15 @@ class MortgageTrackerApp extends StatelessWidget {
           space: 1,
         ),
         switchTheme: SwitchThemeData(
-          thumbColor: WidgetStateProperty.resolveWith((states) =>
-              states.contains(WidgetState.selected) ? Colors.white : kSubtle),
-          trackColor: WidgetStateProperty.resolveWith((states) =>
-              states.contains(WidgetState.selected)
-                  ? kAccent
-                  : kHairline),
-          trackOutlineColor:
-              const WidgetStatePropertyAll(Colors.transparent),
+          thumbColor: WidgetStateProperty.resolveWith(
+            (states) =>
+                states.contains(WidgetState.selected) ? Colors.white : kSubtle,
+          ),
+          trackColor: WidgetStateProperty.resolveWith(
+            (states) =>
+                states.contains(WidgetState.selected) ? kAccent : kHairline,
+          ),
+          trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(

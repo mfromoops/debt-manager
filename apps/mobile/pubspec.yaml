@@ -1,5 +1,5 @@
 name: flutter_app
-description: "Mortgage Tracker - Track your mortgage and simulate payoff strategies."
+description: "Debt Manager - Track debts and simulate payoff strategies."
 publish_to: 'none'
 version: 1.0.0+1
 

@@ -1,4 +1,4 @@
-# Debt Manager (Mortgage Tracker)
+# Debt Manager
 
 A minimalist Flutter app to track your debts and simulate strategies to pay them off sooner.
 
@@ -232,7 +232,7 @@ Since the app isn't distributed through the Play Store, Android will ask you to 
 
 | | |
 |---|---|
-| App name | Mortgage Tracker |
+| App name | Debt Manager |
 | Package | `com.mortgagetracker.tracker` |
 | Version | 1.0.0 |
 

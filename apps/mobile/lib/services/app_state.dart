@@ -6,14 +6,10 @@ import '../models/loan.dart';
 import '../models/extra_payment.dart';
 import '../models/progress_entry.dart';
 import 'amortization_engine.dart';
+import 'payoff_planner.dart';
 import 'sync_service.dart';
 
-enum LoanSortOption {
-  nextPayment,
-  loanAmount,
-  payoffDate,
-  addedRecently,
-}
+enum LoanSortOption { nextPayment, loanAmount, payoffDate, addedRecently }
 
 extension LoanSortOptionInfo on LoanSortOption {
   String get label {
@@ -55,6 +51,7 @@ class AppState extends ChangeNotifier {
     sorted.sort(_compareLoans);
     return List.unmodifiable(sorted);
   }
+
   bool get loaded => _loaded;
   bool get hasLoans => _loans.isNotEmpty;
   bool get syncing => _syncing;
@@ -79,8 +76,7 @@ class AppState extends ChangeNotifier {
   void _invalidate(String id) => _cache.remove(id);
 
   // ---- Aggregates across all loans ----
-  double get totalDebt =>
-      _loans.fold(0.0, (s, l) => s + currentBalance(l));
+  double get totalDebt => _loans.fold(0.0, (s, l) => s + currentBalance(l));
 
   double get totalMonthlyPayment =>
       _loans.fold(0.0, (s, l) => s + l.monthlyPayment);
@@ -88,13 +84,95 @@ class AppState extends ChangeNotifier {
   double get totalInterestSaved =>
       _loans.fold(0.0, (s, l) => s + comparisonFor(l).interestSaved);
 
+  List<double> projectedDebtBalances({DateTime? asOf}) {
+    final through = asOf ?? DateTime.now();
+    final projections = <({List<MonthRow> schedule, int paid, bool stalled})>[];
+    var remainingMonths = 0;
+
+    for (final loan in _loans) {
+      final result = comparisonFor(loan).accelerated;
+      final paid = _paymentCountThrough(
+        loan,
+        through,
+        after: latestCheckpoint(loan)?.date,
+      ).clamp(0, result.schedule.length);
+      final remaining = result.schedule.length - paid;
+      if (remaining > remainingMonths) remainingMonths = remaining;
+      projections.add((
+        schedule: result.schedule,
+        paid: paid,
+        stalled: result.neverPaysOff,
+      ));
+    }
+
+    final balances = <double>[
+      _loans.fold(
+        0.0,
+        (sum, loan) => sum + currentBalance(loan, asOf: through),
+      ),
+    ];
+    for (var month = 1; month <= remainingMonths; month++) {
+      var total = 0.0;
+      for (final projection in projections) {
+        final index = projection.paid + month - 1;
+        if (index < projection.schedule.length) {
+          total += projection.schedule[index].balance;
+        } else if (projection.stalled && projection.schedule.isNotEmpty) {
+          total += projection.schedule.last.balance;
+        }
+      }
+      balances.add(total);
+    }
+    return balances;
+  }
+
+  List<Loan> get activeLoans =>
+      _loans.where((loan) => currentBalance(loan) > 0.005).toList();
+
+  Loan? upcomingPaymentLoan({DateTime? asOf}) {
+    final active = activeLoans;
+    if (active.isEmpty) return null;
+    active.sort(
+      (a, b) => nextPaymentDate(
+        a,
+        asOf: asOf,
+      ).compareTo(nextPaymentDate(b, asOf: asOf)),
+    );
+    return active.first;
+  }
+
+  double get minimumDue =>
+      activeLoans.fold(0.0, (sum, loan) => sum + loan.monthlyPayment);
+
+  double get paymentWithStrategies => activeLoans.fold(
+    0.0,
+    (sum, loan) => sum + nextPaymentWithStrategies(loan),
+  );
+
+  double get strategyExtra =>
+      (paymentWithStrategies - minimumDue).clamp(0, double.infinity);
+
+  double nextPaymentWithStrategies(Loan loan, {DateTime? asOf}) {
+    final dueDate = nextPaymentDate(loan, asOf: asOf);
+    final schedule = comparisonFor(loan).accelerated.schedule;
+    for (final month in schedule) {
+      if (month.date.year == dueDate.year &&
+          month.date.month == dueDate.month) {
+        return month.payment + month.extra;
+      }
+    }
+    return loan.monthlyPayment;
+  }
+
   int _compareLoans(Loan a, Loan b) {
     final result = switch (_loanSort) {
-      LoanSortOption.nextPayment =>
-        nextPaymentDate(a).compareTo(nextPaymentDate(b)),
+      LoanSortOption.nextPayment => nextPaymentDate(
+        a,
+      ).compareTo(nextPaymentDate(b)),
       LoanSortOption.loanAmount => b.principal.compareTo(a.principal),
-      LoanSortOption.payoffDate =>
-        _payoffSortDate(a).compareTo(_payoffSortDate(b)),
+      LoanSortOption.payoffDate => _payoffSortDate(
+        a,
+      ).compareTo(_payoffSortDate(b)),
       LoanSortOption.addedRecently => b.createdAt.compareTo(a.createdAt),
     };
     if (result != 0) return result;
@@ -131,10 +209,12 @@ class AppState extends ChangeNotifier {
 
   List<ExtraPayment> _progressPaymentExtras(Loan loan, DateTime start) {
     return loan.progressEntries
-        .where((entry) =>
-            entry.paymentAmount != null &&
-            entry.balance == null &&
-            !entry.date.isBefore(start))
+        .where(
+          (entry) =>
+              entry.paymentAmount != null &&
+              entry.balance == null &&
+              !entry.date.isBefore(start),
+        )
         .map(
           (entry) => ExtraPayment(
             id: 'progress-${entry.id}',
@@ -148,15 +228,14 @@ class AppState extends ChangeNotifier {
   }
 
   ProgressEntry? latestCheckpoint(Loan loan) {
-    final checkpoints = loan.progressEntries
-        .where((entry) => entry.balance != null)
-        .toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
+    final checkpoints =
+        loan.progressEntries.where((entry) => entry.balance != null).toList()
+          ..sort((a, b) => b.date.compareTo(a.date));
     return checkpoints.isEmpty ? null : checkpoints.first;
   }
 
-  DateTime nextPaymentDate(Loan loan) {
-    final now = DateTime.now();
+  DateTime nextPaymentDate(Loan loan, {DateTime? asOf}) {
+    final now = asOf ?? DateTime.now();
     var candidate = loan.startDate;
     while (candidate.isBefore(DateTime(now.year, now.month, now.day))) {
       final nextMonth = DateTime(candidate.year, candidate.month + 1);
@@ -174,18 +253,40 @@ class AppState extends ChangeNotifier {
     return day > lastDay ? lastDay : day;
   }
 
-  /// Balance as of today according to the accelerated schedule.
-  double currentBalance(Loan loan) {
+  /// Balance after every scheduled payment that has actually fallen due.
+  double currentBalance(Loan loan, {DateTime? asOf}) {
     final projected = projectedLoan(loan);
     final schedule = comparisonFor(loan).accelerated.schedule;
     if (schedule.isEmpty) return projected.principal;
-    final now = DateTime.now();
-    final elapsed = (now.year - projected.startDate.year) * 12 +
-        (now.month - projected.startDate.month) +
-        1;
-    if (elapsed <= 0) return projected.principal;
-    if (elapsed >= schedule.length) return schedule.last.balance;
-    return schedule[elapsed - 1].balance;
+    final through = asOf ?? DateTime.now();
+    final checkpoint = latestCheckpoint(loan);
+    final paymentsDue = _paymentCountThrough(
+      loan,
+      through,
+      after: checkpoint?.date,
+    );
+    if (paymentsDue == 0) return projected.principal;
+    if (paymentsDue >= schedule.length) return schedule.last.balance;
+    return schedule[paymentsDue - 1].balance;
+  }
+
+  int _paymentCountThrough(Loan loan, DateTime through, {DateTime? after}) {
+    final throughDate = DateTime(through.year, through.month, through.day);
+    final afterDate = after == null
+        ? null
+        : DateTime(after.year, after.month, after.day);
+    var candidate = loan.startDate;
+    var count = 0;
+    while (!candidate.isAfter(throughDate)) {
+      if (afterDate == null || candidate.isAfter(afterDate)) count++;
+      final nextMonth = DateTime(candidate.year, candidate.month + 1);
+      candidate = DateTime(
+        nextMonth.year,
+        nextMonth.month,
+        _clampDay(loan.startDate.day, nextMonth.year, nextMonth.month),
+      );
+    }
+    return count;
   }
 
   double progressPaidDown(Loan loan) => (loan.principal - currentBalance(loan))
@@ -201,9 +302,8 @@ class AppState extends ChangeNotifier {
           sortIndex < LoanSortOption.values.length) {
         _loanSort = LoanSortOption.values[sortIndex];
       }
-      _syncUpdatedAt = DateTime.tryParse(
-            prefs.getString(_syncUpdatedAtKey) ?? '',
-          ) ??
+      _syncUpdatedAt =
+          DateTime.tryParse(prefs.getString(_syncUpdatedAtKey) ?? '') ??
           DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
       _syncRev = prefs.getString(_syncRevKey) ?? '0';
       _syncDeviceId = prefs.getString(_syncDeviceIdKey);
@@ -261,7 +361,9 @@ class AppState extends ChangeNotifier {
     _syncService = syncService;
   }
 
-  void setSyncSession(Future<String?> Function({bool forceRefresh})? tokenProvider) {
+  void setSyncSession(
+    Future<String?> Function({bool forceRefresh})? tokenProvider,
+  ) {
     _accessTokenProvider = tokenProvider;
     if (tokenProvider != null && _loaded) {
       unawaited(syncNow());
@@ -328,9 +430,14 @@ class AppState extends ChangeNotifier {
       }
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(
-          _loansKey, jsonEncode(_loans.map((l) => l.toJson()).toList()));
+        _loansKey,
+        jsonEncode(_loans.map((l) => l.toJson()).toList()),
+      );
       await prefs.setInt(_loanSortKey, _loanSort.index);
-      await prefs.setString(_syncUpdatedAtKey, _syncUpdatedAt.toIso8601String());
+      await prefs.setString(
+        _syncUpdatedAtKey,
+        _syncUpdatedAt.toIso8601String(),
+      );
       await prefs.setString(_syncRevKey, _syncRev);
       await prefs.setString(_syncDeviceIdKey, _deviceId());
     } catch (e) {
@@ -346,7 +453,9 @@ class AppState extends ChangeNotifier {
   Future<void> _pushSync() async {
     final syncService = _syncService;
     final tokenProvider = _accessTokenProvider;
-    if (syncService == null || tokenProvider == null || !syncService.isConfigured) {
+    if (syncService == null ||
+        tokenProvider == null ||
+        !syncService.isConfigured) {
       return;
     }
     try {
@@ -378,7 +487,7 @@ class AppState extends ChangeNotifier {
     } catch (e) {
       _syncError = e.toString();
       if (kDebugMode) {
-      debugPrint('Sync push failed: $e');
+        debugPrint('Sync push failed: $e');
       }
     }
   }
@@ -453,27 +562,104 @@ class AppState extends ChangeNotifier {
   Future<void> updateExtra(String loanId, ExtraPayment e) async {
     final loan = loanById(loanId);
     if (loan == null) return;
-    await updateLoan(loan.copyWith(
-      extras: loan.extras.map((x) => x.id == e.id ? e : x).toList(),
-    ));
+    await updateLoan(
+      loan.copyWith(
+        extras: loan.extras.map((x) => x.id == e.id ? e : x).toList(),
+      ),
+    );
   }
 
   Future<void> removeExtra(String loanId, String extraId) async {
     final loan = loanById(loanId);
     if (loan == null) return;
-    await updateLoan(loan.copyWith(
-      extras: loan.extras.where((x) => x.id != extraId).toList(),
-    ));
+    await updateLoan(
+      loan.copyWith(extras: loan.extras.where((x) => x.id != extraId).toList()),
+    );
+  }
+
+  Future<void> clearAllStrategies() async {
+    if (_loans.every((loan) => loan.extras.isEmpty)) return;
+    _loans = _loans.map((loan) => loan.copyWith(extras: const [])).toList();
+    _cache.clear();
+    notifyListeners();
+    await _persist();
   }
 
   Future<void> toggleExtra(String loanId, String extraId, bool enabled) async {
     final loan = loanById(loanId);
     if (loan == null) return;
-    await updateLoan(loan.copyWith(
-      extras: loan.extras
-          .map((x) => x.id == extraId ? x.copyWith(enabled: enabled) : x)
-          .toList(),
-    ));
+    await updateLoan(
+      loan.copyWith(
+        extras: loan.extras
+            .map((x) => x.id == extraId ? x.copyWith(enabled: enabled) : x)
+            .toList(),
+      ),
+    );
+  }
+
+  Future<int> applyPayoffPlan(
+    PlanResult plan, {
+    required DateTime startDate,
+  }) async {
+    if (plan.neverPaysOff || plan.loanResults.isEmpty) return 0;
+
+    final resultsByLoanId = {
+      for (final result in plan.loanResults) result.loanId: result,
+    };
+
+    final planStart = DateTime(startDate.year, startDate.month);
+    final now = DateTime.now();
+    final baseId = now.microsecondsSinceEpoch;
+    var addedCount = 0;
+    _loans = _loans.map((loan) {
+      final result = resultsByLoanId[loan.id];
+      if (result == null) return loan;
+      final firstTargetMonth = result.firstTargetMonth;
+      if (firstTargetMonth == null) return loan;
+
+      final strategyStart = DateTime(
+        planStart.year,
+        planStart.month + firstTargetMonth - 1,
+      );
+      final existingSchedule = comparisonFor(loan).accelerated;
+      final existingPayoffMonth =
+          existingSchedule.payoffDate.year * 12 +
+          existingSchedule.payoffDate.month;
+      final strategyStartMonth = strategyStart.year * 12 + strategyStart.month;
+      if (!existingSchedule.neverPaysOff &&
+          existingPayoffMonth < strategyStartMonth) {
+        return loan;
+      }
+      final rolledOver = plan.loanResults
+          .where((candidate) => candidate.monthsToPayoff < firstTargetMonth)
+          .fold<double>(
+            0,
+            (sum, candidate) =>
+                sum + (loanById(candidate.loanId)?.monthlyPayment ?? 0),
+          );
+      final amount = plan.monthlyBudget + rolledOver;
+      if (amount <= 0.005) return loan;
+
+      addedCount++;
+      return loan.copyWith(
+        extras: [
+          ...loan.extras,
+          ExtraPayment(
+            id: 'plan-$baseId-${result.payoffOrder}',
+            name:
+                '${plan.method.label} plan #${result.payoffOrder}: ${loan.name}',
+            amount: amount,
+            cadence: CadenceType.monthly,
+            startDate: strategyStart,
+          ),
+        ],
+      );
+    }).toList();
+
+    _cache.clear();
+    notifyListeners();
+    await _persist();
+    return addedCount;
   }
 
   Future<void> addProgressEntry(String loanId, ProgressEntry entry) async {
@@ -484,10 +670,7 @@ class AppState extends ChangeNotifier {
     );
   }
 
-  Future<void> updateProgressEntry(
-    String loanId,
-    ProgressEntry entry,
-  ) async {
+  Future<void> updateProgressEntry(String loanId, ProgressEntry entry) async {
     final loan = loanById(loanId);
     if (loan == null) return;
     await updateLoan(
@@ -504,8 +687,9 @@ class AppState extends ChangeNotifier {
     if (loan == null) return;
     await updateLoan(
       loan.copyWith(
-        progressEntries:
-            loan.progressEntries.where((x) => x.id != entryId).toList(),
+        progressEntries: loan.progressEntries
+            .where((x) => x.id != entryId)
+            .toList(),
       ),
     );
   }

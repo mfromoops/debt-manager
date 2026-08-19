@@ -9,7 +9,9 @@
     "sync:dev": "pnpm --filter debt-manager-sync dev -- --port 8788",
     "sync:deploy": "pnpm --filter debt-manager-sync deploy",
     "sync:typecheck": "pnpm --filter debt-manager-sync exec tsc --noEmit",
-    "mobile:build:apk": "cd apps/mobile && flutter build apk --release --dart-define=WORKOS_CLIENT_ID=client_01M07XGHQJENJASNY4P2CM2E11 --dart-define=AUTH_BACKEND_BASE_URL=https://debt-manager-auth.mariofloresdev.com --dart-define=SYNC_BACKEND_BASE_URL=https://debt-manager-sync.mariofloresdev.com --dart-define=WORKOS_REDIRECT_URI=com.mortgagetracker.tracker://auth/callback --dart-define=WORKOS_PROVIDER=GoogleOAuth"
+    "mobile:build:apk": "cd apps/mobile && flutter build apk --release --dart-define=WORKOS_CLIENT_ID=client_01M07XGHQJENJASNY4P2CM2E11 --dart-define=AUTH_BACKEND_BASE_URL=https://debt-manager-auth.mariofloresdev.com --dart-define=SYNC_BACKEND_BASE_URL=https://debt-manager-sync.mariofloresdev.com --dart-define=WORKOS_REDIRECT_URI=com.mortgagetracker.tracker://auth/callback --dart-define=WORKOS_PROVIDER=GoogleOAuth",
+    "mobile:build:web": "cd apps/mobile && flutter build web --release --dart-define=WORKOS_CLIENT_ID=client_01M07XGHQJENJASNY4P2CM2E11 --dart-define=AUTH_BACKEND_BASE_URL=https://debt-manager-auth.mariofloresdev.com --dart-define=SYNC_BACKEND_BASE_URL=https://debt-manager-sync.mariofloresdev.com --dart-define=WORKOS_REDIRECT_URI=https://dm.mariofloresdev.com/auth/callback --dart-define=WORKOS_PROVIDER=GoogleOAuth",
+    "mobile:deploy:web": "wrangler pages deploy apps/mobile/build/web --project-name debt-manager --branch main"
   },
   "packageManager": "pnpm@11.7.0"
 }

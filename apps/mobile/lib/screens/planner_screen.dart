@@ -17,6 +17,10 @@ class PlannerScreen extends StatefulWidget {
 class _PlannerScreenState extends State<PlannerScreen> {
   PlanMethod _method = PlanMethod.avalanche;
   double _budget = 200;
+  DateTime _strategyStartDate = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+  );
   late final TextEditingController _budgetCtrl;
 
   @override
@@ -36,6 +40,49 @@ class _PlannerScreenState extends State<PlannerScreen> {
     if (n != null && n >= 0) {
       setState(() => _budget = n);
     }
+  }
+
+  Future<void> _applyPlan(PlanResult planned) async {
+    if (planned.neverPaysOff || planned.loanResults.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'This plan needs a full payoff before it can be applied.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final addedCount = await context.read<AppState>().applyPayoffPlan(
+          planned,
+          startDate: _strategyStartDate,
+        );
+    if (!mounted) return;
+    final message = addedCount == 0
+        ? 'No strategies needed to be added.'
+        : addedCount == 1
+            ? 'Added 1 ${planned.method.label.toLowerCase()} strategy.'
+            : 'Added $addedCount '
+                '${planned.method.label.toLowerCase()} strategies.';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+      ),
+    );
+  }
+
+  Future<void> _pickStrategyStartDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _strategyStartDate,
+      firstDate: DateTime(1990),
+      lastDate: DateTime(2070),
+    );
+    if (picked == null) return;
+    setState(() {
+      _strategyStartDate = DateTime(picked.year, picked.month);
+    });
   }
 
   @override
@@ -209,6 +256,22 @@ class _PlannerScreenState extends State<PlannerScreen> {
                 money.format(planned.totalInterest),
               ),
               const Divider(),
+              _pickerRow(
+                'Strategy starts',
+                DateFormat('MMM yyyy').format(_strategyStartDate),
+                _pickStrategyStartDate,
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: planned.neverPaysOff || planned.loanResults.isEmpty
+                      ? null
+                      : () => _applyPlan(planned),
+                  icon: const Icon(Icons.check_circle_outline, size: 18),
+                  label: const Text('Apply strategy'),
+                ),
+              ),
               const SizedBox(height: 36),
               const Text(
                 'PAYOFF ORDER',
@@ -359,6 +422,39 @@ class _PlannerScreenState extends State<PlannerScreen> {
         height: 8,
         decoration: BoxDecoration(color: color, shape: BoxShape.circle),
       );
+
+  Widget _pickerRow(String label, String value, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: kHairline)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w300,
+                color: kSubtle,
+              ),
+            ),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w400,
+                color: kInk,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _statRow(String label, String value, {Color valueColor = kInk}) {
     return Padding(

@@ -3,8 +3,7 @@ import '../models/loan.dart';
 enum PlanMethod { avalanche, snowball }
 
 extension PlanMethodInfo on PlanMethod {
-  String get label =>
-      this == PlanMethod.avalanche ? 'Avalanche' : 'Snowball';
+  String get label => this == PlanMethod.avalanche ? 'Avalanche' : 'Snowball';
 
   String get description => this == PlanMethod.avalanche
       ? 'Highest interest rate first — saves the most money.'
@@ -19,6 +18,9 @@ class PlanLoanResult {
   final DateTime payoffDate;
   final int monthsToPayoff;
   final double totalInterest;
+  final double totalExtraPaid;
+  final int targetedMonths;
+  final int? firstTargetMonth;
 
   const PlanLoanResult({
     required this.loanId,
@@ -27,6 +29,9 @@ class PlanLoanResult {
     required this.payoffDate,
     required this.monthsToPayoff,
     required this.totalInterest,
+    required this.totalExtraPaid,
+    required this.targetedMonths,
+    required this.firstTargetMonth,
   });
 }
 
@@ -64,6 +69,9 @@ class _SimLoan {
   final Loan loan;
   double balance;
   double totalInterest = 0;
+  double totalExtraPaid = 0;
+  int targetedMonths = 0;
+  int? firstTargetMonth;
   int? payoffMonth;
 
   _SimLoan(this.loan, this.balance);
@@ -101,9 +109,11 @@ class PayoffPlanner {
 
       // Sort active loans by priority: the first is this month's target.
       final active = sims.where((s) => s.balance > 0.005).toList();
-      active.sort((a, b) => method == PlanMethod.avalanche
-          ? b.loan.annualRate.compareTo(a.loan.annualRate)
-          : a.balance.compareTo(b.balance));
+      active.sort(
+        (a, b) => method == PlanMethod.avalanche
+            ? b.loan.annualRate.compareTo(a.loan.annualRate)
+            : a.balance.compareTo(b.balance),
+      );
 
       double budget = monthlyBudget + rolledOver;
 
@@ -134,6 +144,9 @@ class PayoffPlanner {
         if (s.balance <= 0.005) continue;
         final pay = budget >= s.balance ? s.balance : budget;
         s.balance -= pay;
+        s.totalExtraPaid += pay;
+        s.targetedMonths++;
+        s.firstTargetMonth ??= m;
         budget -= pay;
       }
 
@@ -145,15 +158,12 @@ class PayoffPlanner {
         }
       }
 
-      final total =
-          sims.fold<double>(0, (sum, s) => sum + s.balance);
+      final total = sims.fold<double>(0, (sum, s) => sum + s.balance);
       curve.add(DebtPoint(m, total));
 
       // Divergence guard: if total debt hasn't decreased over the last
       // 12 months, the plan never pays off — stop early.
-      if (m > 12 &&
-          total > 0 &&
-          total >= curve[m - 13].totalBalance) {
+      if (m > 12 && total > 0 && total >= curve[m - 13].totalBalance) {
         break;
       }
     }
@@ -166,19 +176,25 @@ class PayoffPlanner {
     final results = <PlanLoanResult>[];
     for (int i = 0; i < finished.length; i++) {
       final s = finished[i];
-      results.add(PlanLoanResult(
-        loanId: s.loan.id,
-        loanName: s.loan.name,
-        payoffOrder: i + 1,
-        payoffDate:
-            DateTime(start.year, start.month + s.payoffMonth! - 1),
-        monthsToPayoff: s.payoffMonth!,
-        totalInterest: s.totalInterest,
-      ));
+      results.add(
+        PlanLoanResult(
+          loanId: s.loan.id,
+          loanName: s.loan.name,
+          payoffOrder: i + 1,
+          payoffDate: DateTime(start.year, start.month + s.payoffMonth! - 1),
+          monthsToPayoff: s.payoffMonth!,
+          totalInterest: s.totalInterest,
+          totalExtraPaid: s.totalExtraPaid,
+          targetedMonths: s.targetedMonths,
+          firstTargetMonth: s.firstTargetMonth,
+        ),
+      );
     }
 
-    final totalInterest =
-        sims.fold<double>(0, (sum, s) => sum + s.totalInterest);
+    final totalInterest = sims.fold<double>(
+      0,
+      (sum, s) => sum + s.totalInterest,
+    );
 
     return PlanResult(
       method: method,

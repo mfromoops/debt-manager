@@ -197,14 +197,68 @@ class _StrategyRow extends StatelessWidget {
                 ],
               ),
             ),
-            Switch(
-              value: extra.enabled,
-              onChanged: (v) =>
-                  context.read<AppState>().toggleExtra(loan.id, extra.id, v),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Switch(
+                  value: extra.enabled,
+                  onChanged: (v) => context
+                      .read<AppState>()
+                      .toggleExtra(loan.id, extra.id, v),
+                ),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_horiz, color: kSubtle),
+                  onSelected: (value) {
+                    if (value == 'edit') {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => StrategyEditScreen(
+                            loanId: loan.id,
+                            existing: extra,
+                          ),
+                        ),
+                      );
+                    } else if (value == 'delete') {
+                      _confirmDelete(context);
+                    }
+                  },
+                  itemBuilder: (context) => const [
+                    PopupMenuItem(value: 'edit', child: Text('Edit')),
+                    PopupMenuItem(value: 'delete', child: Text('Delete')),
+                  ],
+                ),
+              ],
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete strategy?'),
+        content: Text('Remove ${extra.name} from ${loan.name}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    await context.read<AppState>().removeExtra(loan.id, extra.id);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Strategy deleted.')),
     );
   }
 }
