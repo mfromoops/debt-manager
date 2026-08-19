@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_app/models/loan.dart';
 import 'package:flutter_app/models/extra_payment.dart';
+import 'package:flutter_app/models/progress_entry.dart';
+import 'package:flutter_app/services/app_state.dart';
 import 'package:flutter_app/services/amortization_engine.dart';
 import 'package:flutter_app/services/payoff_planner.dart';
 
@@ -78,6 +80,87 @@ void main() {
     );
     final result = AmortizationEngine.simulate(card, const []);
     expect(result.neverPaysOff, isTrue);
+  });
+
+  test('Loan progress entries round-trip through JSON', () {
+    final loan = Loan(
+      id: '6',
+      name: 'Tracked Loan',
+      type: LoanType.personalLoan,
+      principal: 12000,
+      annualRate: 8.5,
+      startDate: DateTime(2026, 1, 15),
+      paymentMode: PaymentMode.amortized,
+      termYears: 5,
+      progressEntries: [
+        ProgressEntry(
+          id: 'p1',
+          date: DateTime(2026, 8, 19),
+          paymentAmount: 300,
+          balance: 10450,
+          note: 'Statement',
+        ),
+      ],
+    );
+
+    final restored = Loan.fromJson(loan.toJson());
+    expect(restored.progressEntries, hasLength(1));
+    expect(restored.progressEntries.first.paymentAmount, 300);
+    expect(restored.progressEntries.first.balance, 10450);
+    expect(restored.progressEntries.first.note, 'Statement');
+  });
+
+  test('Balance checkpoints preserve amortized scheduled payment', () {
+    final loan = Loan(
+      id: '7',
+      name: 'Checkpoint Loan',
+      type: LoanType.autoLoan,
+      principal: 30000,
+      annualRate: 6.0,
+      startDate: DateTime(2026, 1, 15),
+      paymentMode: PaymentMode.amortized,
+      termYears: 5,
+      progressEntries: [
+        ProgressEntry(
+          id: 'p2',
+          date: DateTime(2026, 8, 19),
+          balance: 25000,
+        ),
+      ],
+    );
+    final state = AppState();
+    final projected = state.projectedLoan(loan);
+
+    expect(projected.principal, 25000);
+    expect(projected.startDate, DateTime(2026, 8, 19));
+    expect(projected.paymentMode, PaymentMode.fixedPayment);
+    expect(projected.fixedMonthlyPayment, closeTo(loan.monthlyPayment, 0.01));
+  });
+
+  test('Payment-only progress becomes a factual one-time extra', () {
+    final loan = Loan(
+      id: '8',
+      name: 'Payment History Loan',
+      type: LoanType.personalLoan,
+      principal: 10000,
+      annualRate: 6.0,
+      startDate: DateTime(2026, 1, 10),
+      paymentMode: PaymentMode.fixedPayment,
+      fixedMonthlyPayment: 350,
+      progressEntries: [
+        ProgressEntry(
+          id: 'p3',
+          date: DateTime(2026, 2, 10),
+          paymentAmount: 500,
+        ),
+      ],
+    );
+    final state = AppState();
+    final projected = state.projectedLoan(loan);
+
+    expect(projected.extras, hasLength(1));
+    expect(projected.extras.first.amount, 500);
+    expect(projected.extras.first.oneTimeDate, DateTime(2026, 2, 10));
   });
 
   test('Extra payments rescue an under-paying credit card', () {

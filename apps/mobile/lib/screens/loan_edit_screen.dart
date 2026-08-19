@@ -93,7 +93,7 @@ class _LoanEditScreenState extends State<LoanEditScreen> {
       lastDate: DateTime(2060),
     );
     if (picked != null) {
-      setState(() => _startDate = DateTime(picked.year, picked.month));
+      setState(() => _startDate = picked);
     }
   }
 
@@ -144,6 +144,7 @@ class _LoanEditScreenState extends State<LoanEditScreen> {
         paymentMode: _paymentMode,
         termYears: int.tryParse(_termCtrl.text) ?? 30,
         fixedMonthlyPayment: fixedPayment,
+        createdAt: DateTime.now(),
       ));
     }
     Navigator.of(context).pop();
@@ -269,7 +270,7 @@ class _LoanEditScreenState extends State<LoanEditScreen> {
                     FilteringTextInputFormatter.allow(RegExp(r'[\d.,]')),
                   ],
                   decoration: InputDecoration(
-                    labelText: isFixed ? 'Current balance' : 'Loan amount',
+                    labelText: isFixed ? 'Current balance' : 'Starting balance',
                     prefixText: '\$ ',
                     prefixStyle: const TextStyle(color: kInk),
                   ),
@@ -372,7 +373,7 @@ class _LoanEditScreenState extends State<LoanEditScreen> {
                           ),
                         ),
                         Text(
-                          DateFormat('MMMM yyyy').format(_startDate),
+                          DateFormat.yMMMd().format(_startDate),
                           style: const TextStyle(fontSize: 16, color: kInk),
                         ),
                       ],

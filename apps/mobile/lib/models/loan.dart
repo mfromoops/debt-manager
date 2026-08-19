@@ -1,4 +1,5 @@
 import 'extra_payment.dart';
+import 'progress_entry.dart';
 
 enum LoanType {
   mortgage,
@@ -44,6 +45,7 @@ class Loan {
   final double principal; // current balance being tracked
   final double annualRate; // percentage e.g. 6.5
   final DateTime startDate;
+  final DateTime createdAt;
   final PaymentMode paymentMode;
 
   /// For amortized loans.
@@ -53,19 +55,22 @@ class Loan {
   final double fixedMonthlyPayment;
 
   final List<ExtraPayment> extras;
+  final List<ProgressEntry> progressEntries;
 
-  const Loan({
+  Loan({
     required this.id,
     required this.name,
     required this.type,
     required this.principal,
     required this.annualRate,
     required this.startDate,
+    DateTime? createdAt,
     required this.paymentMode,
     this.termYears = 30,
     this.fixedMonthlyPayment = 0,
     this.extras = const [],
-  });
+    this.progressEntries = const [],
+  }) : createdAt = createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
 
   int get termMonths => termYears * 12;
 
@@ -94,16 +99,28 @@ class Loan {
     return result;
   }
 
+  static DateTime _createdAtFromJson(Map<String, dynamic> json) {
+    final createdAt = json['createdAt'];
+    if (createdAt is String) return DateTime.parse(createdAt);
+    final idMicros = int.tryParse(json['id'] as String? ?? '');
+    if (idMicros != null) {
+      return DateTime.fromMicrosecondsSinceEpoch(idMicros);
+    }
+    return DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
   Loan copyWith({
     String? name,
     LoanType? type,
     double? principal,
     double? annualRate,
     DateTime? startDate,
+    DateTime? createdAt,
     PaymentMode? paymentMode,
     int? termYears,
     double? fixedMonthlyPayment,
     List<ExtraPayment>? extras,
+    List<ProgressEntry>? progressEntries,
   }) {
     return Loan(
       id: id,
@@ -112,10 +129,12 @@ class Loan {
       principal: principal ?? this.principal,
       annualRate: annualRate ?? this.annualRate,
       startDate: startDate ?? this.startDate,
+      createdAt: createdAt ?? this.createdAt,
       paymentMode: paymentMode ?? this.paymentMode,
       termYears: termYears ?? this.termYears,
       fixedMonthlyPayment: fixedMonthlyPayment ?? this.fixedMonthlyPayment,
       extras: extras ?? this.extras,
+      progressEntries: progressEntries ?? this.progressEntries,
     );
   }
 
@@ -126,10 +145,12 @@ class Loan {
         'principal': principal,
         'annualRate': annualRate,
         'startDate': startDate.toIso8601String(),
+        'createdAt': createdAt.toIso8601String(),
         'paymentMode': paymentMode.index,
         'termYears': termYears,
         'fixedMonthlyPayment': fixedMonthlyPayment,
         'extras': extras.map((e) => e.toJson()).toList(),
+        'progressEntries': progressEntries.map((e) => e.toJson()).toList(),
       };
 
   factory Loan.fromJson(Map<String, dynamic> json) => Loan(
@@ -139,6 +160,7 @@ class Loan {
         principal: (json['principal'] as num).toDouble(),
         annualRate: (json['annualRate'] as num).toDouble(),
         startDate: DateTime.parse(json['startDate'] as String),
+        createdAt: _createdAtFromJson(json),
         paymentMode:
             PaymentMode.values[(json['paymentMode'] as num).toInt()],
         termYears: (json['termYears'] as num?)?.toInt() ?? 30,
@@ -146,6 +168,9 @@ class Loan {
             (json['fixedMonthlyPayment'] as num?)?.toDouble() ?? 0,
         extras: (json['extras'] as List<dynamic>? ?? [])
             .map((e) => ExtraPayment.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        progressEntries: (json['progressEntries'] as List<dynamic>? ?? [])
+            .map((e) => ProgressEntry.fromJson(e as Map<String, dynamic>))
             .toList(),
       );
 }

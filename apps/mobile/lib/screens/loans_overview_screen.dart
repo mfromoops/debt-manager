@@ -34,6 +34,7 @@ class LoansOverviewScreen extends StatelessWidget {
     final state = context.watch<AppState>();
     final auth = context.watch<AuthService>();
     final money = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
+    final loans = state.sortedLoans;
 
     return Scaffold(
       body: SafeArea(
@@ -214,17 +215,54 @@ class LoansOverviewScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 36),
-                    const Text(
-                      'YOUR LOANS',
-                      style: TextStyle(
-                        fontSize: 11,
-                        letterSpacing: 1.5,
-                        fontWeight: FontWeight.w400,
-                        color: kSubtle,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'YOUR LOANS',
+                          style: TextStyle(
+                            fontSize: 11,
+                            letterSpacing: 1.5,
+                            fontWeight: FontWeight.w400,
+                            color: kSubtle,
+                          ),
+                        ),
+                        PopupMenuButton<LoanSortOption>(
+                          tooltip: 'Sort loans',
+                          initialValue: state.loanSort,
+                          icon: const Icon(
+                            Icons.sort,
+                            size: 20,
+                            color: kSubtle,
+                          ),
+                          onSelected: state.setLoanSort,
+                          itemBuilder: (context) => LoanSortOption.values
+                              .map(
+                                (option) => PopupMenuItem<LoanSortOption>(
+                                  value: option,
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        state.loanSort == option
+                                            ? Icons.check
+                                            : Icons.circle_outlined,
+                                        size: 16,
+                                        color: state.loanSort == option
+                                            ? kAccent
+                                            : Colors.transparent,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(option.label),
+                                    ],
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
-                    ...state.loans.expand((loan) sync* {
+                    ...loans.expand((loan) sync* {
                       yield const Divider();
                       yield _LoanRow(
                         loan: loan,
