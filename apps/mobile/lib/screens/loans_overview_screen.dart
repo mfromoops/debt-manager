@@ -84,11 +84,20 @@ class LoansOverviewScreen extends StatelessWidget {
                                   color: Color(0xFFB3402E),
                                 ),
                               )
-                            else
+                            else if (auth.isAuthenticated)
                               const Tooltip(
                                 message: 'Synced',
                                 child: Icon(
                                   Icons.cloud_done_outlined,
+                                  size: 20,
+                                  color: kSubtle,
+                                ),
+                              )
+                            else
+                              const Tooltip(
+                                message: 'Stored on this device',
+                                child: Icon(
+                                  Icons.phone_android_outlined,
                                   size: 20,
                                   color: kSubtle,
                                 ),
@@ -300,14 +309,16 @@ class LoansOverviewScreen extends StatelessWidget {
         if (value == 'clear-strategies') {
           await _confirmClearStrategies(context);
         } else if (value == 'sign-out') {
-          auth.signOut();
+          await auth.signOut();
+        } else if (value == 'sign-in') {
+          await auth.signIn();
         }
       },
       itemBuilder: (context) => [
         PopupMenuItem<String>(
           enabled: false,
           child: Text(
-            auth.user?.email ?? 'Signed in',
+            auth.user?.email ?? 'Stored on this device',
             style: const TextStyle(fontSize: 12, color: kSubtle),
           ),
         ),
@@ -319,7 +330,17 @@ class LoansOverviewScreen extends StatelessWidget {
           ),
         ],
         const PopupMenuDivider(),
-        const PopupMenuItem<String>(value: 'sign-out', child: Text('Sign out')),
+        if (auth.isAuthenticated)
+          const PopupMenuItem<String>(
+            value: 'sign-out',
+            child: Text('Sign out'),
+          )
+        else
+          PopupMenuItem<String>(
+            value: 'sign-in',
+            enabled: auth.isConfigured && !auth.busy,
+            child: const Text('Sign in to sync'),
+          ),
       ],
     );
   }

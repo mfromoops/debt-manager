@@ -22,7 +22,7 @@ class HomeShell extends StatelessWidget {
       );
     }
 
-    if (!auth.isAuthenticated) {
+    if (!auth.isAuthenticated && !auth.guestMode) {
       return const SignInScreen();
     }
 

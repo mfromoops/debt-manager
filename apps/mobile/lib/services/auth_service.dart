@@ -24,9 +24,10 @@ class AuthUser {
   final String? lastName;
 
   String get displayName {
-    final fullName = [firstName, lastName]
-        .where((part) => part != null && part.trim().isNotEmpty)
-        .join(' ');
+    final fullName = [
+      firstName,
+      lastName,
+    ].where((part) => part != null && part.trim().isNotEmpty).join(' ');
     return fullName.isNotEmpty ? fullName : email;
   }
 
@@ -40,11 +41,11 @@ class AuthUser {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'email': email,
-        'first_name': firstName,
-        'last_name': lastName,
-      };
+    'id': id,
+    'email': email,
+    'first_name': firstName,
+    'last_name': lastName,
+  };
 }
 
 class AuthService extends ChangeNotifier {
@@ -54,6 +55,7 @@ class AuthService extends ChangeNotifier {
   static const _accessTokenKey = 'auth.accessToken';
   static const _refreshTokenKey = 'auth.refreshToken';
   static const _pendingStateKey = 'auth.pendingState';
+  static const _guestModeKey = 'auth.guestMode';
 
   final http.Client _client;
   final AppLinks _appLinks = AppLinks();
@@ -61,6 +63,7 @@ class AuthService extends ChangeNotifier {
 
   bool _loaded = false;
   bool _busy = false;
+  bool _guestMode = false;
   String? _error;
   AuthUser? _user;
   String? _accessToken;
@@ -69,6 +72,7 @@ class AuthService extends ChangeNotifier {
 
   bool get loaded => _loaded;
   bool get busy => _busy;
+  bool get guestMode => _guestMode;
   bool get isAuthenticated => _user != null && _accessToken != null;
   bool get isConfigured => AuthConfig.isConfigured;
   String? get error => _error;
@@ -91,6 +95,7 @@ class AuthService extends ChangeNotifier {
     final userJson = prefs.getString(_userKey);
     _accessToken = prefs.getString(_accessTokenKey);
     _refreshToken = prefs.getString(_refreshTokenKey);
+    _guestMode = prefs.getBool(_guestModeKey) ?? false;
     if (userJson != null) {
       _user = AuthUser.fromJson(jsonDecode(userJson) as Map<String, dynamic>);
     }
@@ -143,7 +148,9 @@ class AuthService extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       final expectedState = prefs.getString(_pendingStateKey);
       if (expectedState == null || returnedState != expectedState) {
-        throw const AuthException('The sign-in response could not be verified.');
+        throw const AuthException(
+          'The sign-in response could not be verified.',
+        );
       }
 
       final response = await _client
@@ -167,7 +174,9 @@ class AuthService extends ChangeNotifier {
       _refreshToken = body['refresh_token'] as String?;
       final user = body['user'] as Map<String, dynamic>?;
       if (_accessToken == null || user == null) {
-        throw const AuthException('Auth callback returned an incomplete session.');
+        throw const AuthException(
+          'Auth callback returned an incomplete session.',
+        );
       }
 
       _user = AuthUser.fromJson(user);
@@ -176,7 +185,9 @@ class AuthService extends ChangeNotifier {
         await prefs.setString(_refreshTokenKey, _refreshToken!);
       }
       await prefs.setString(_userKey, jsonEncode(_user!.toJson()));
+      await prefs.setBool(_guestModeKey, false);
       await prefs.remove(_pendingStateKey);
+      _guestMode = false;
       _error = null;
     } catch (e) {
       _error = e.toString();
@@ -192,9 +203,19 @@ class AuthService extends ChangeNotifier {
     await prefs.remove(_accessTokenKey);
     await prefs.remove(_refreshTokenKey);
     await prefs.remove(_pendingStateKey);
+    await prefs.setBool(_guestModeKey, true);
     _user = null;
     _accessToken = null;
     _refreshToken = null;
+    _guestMode = true;
+    _error = null;
+    notifyListeners();
+  }
+
+  Future<void> continueAsGuest() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_guestModeKey, true);
+    _guestMode = true;
     _error = null;
     notifyListeners();
   }
@@ -228,7 +249,9 @@ class AuthService extends ChangeNotifier {
       final nextAccessToken = body['access_token'] as String?;
       final nextRefreshToken = body['refresh_token'] as String?;
       if (nextAccessToken == null || nextRefreshToken == null) {
-        throw const AuthException('Session refresh returned an incomplete session.');
+        throw const AuthException(
+          'Session refresh returned an incomplete session.',
+        );
       }
 
       final prefs = await SharedPreferences.getInstance();
@@ -256,7 +279,9 @@ class AuthService extends ChangeNotifier {
     try {
       final launched = await launchUrl(
         uri,
-        mode: kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication,
+        mode: kIsWeb
+            ? LaunchMode.platformDefault
+            : LaunchMode.externalApplication,
       );
       if (!launched) {
         throw const AuthException('Could not open the WorkOS sign-in page.');

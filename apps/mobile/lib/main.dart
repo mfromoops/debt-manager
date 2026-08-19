@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'services/auth_service.dart';
@@ -20,8 +22,11 @@ void main() {
   final syncService = SyncService();
   appState.configureSync(syncService);
   authService.addListener(() {
-    appState.setSyncSession(
-      authService.isAuthenticated ? authService.validAccessToken : null,
+    unawaited(
+      appState.setSyncSession(
+        authService.isAuthenticated ? authService.validAccessToken : null,
+        userId: authService.user?.id,
+      ),
     );
   });
   runApp(

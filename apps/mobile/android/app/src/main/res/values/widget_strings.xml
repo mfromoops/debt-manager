@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="payment_cycle_widget_name">Payment cycle</string>
+    <string name="payment_cycle_widget_description">Your payment plan for this cycle</string>
+    <string name="debt_progress_widget_name">Debt progress</string>
+    <string name="debt_progress_widget_description">Your remaining debt and payoff progress</string>
+    <string name="next_payment_widget_name">Next payment</string>
+    <string name="next_payment_widget_description">The next debt payment due</string>
+</resources>

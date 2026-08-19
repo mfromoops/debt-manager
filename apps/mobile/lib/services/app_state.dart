@@ -8,8 +8,16 @@ import '../models/progress_entry.dart';
 import 'amortization_engine.dart';
 import 'payoff_planner.dart';
 import 'sync_service.dart';
+import 'launcher_widget_service.dart';
 
-enum LoanSortOption { nextPayment, loanAmount, payoffDate, addedRecently }
+enum LoanSortOption {
+  nextPayment,
+  loanAmount,
+  payoffDate,
+  addedRecently,
+  minimumDue,
+  interestRate,
+}
 
 extension LoanSortOptionInfo on LoanSortOption {
   String get label {
@@ -22,6 +30,10 @@ extension LoanSortOptionInfo on LoanSortOption {
         return 'Payoff date';
       case LoanSortOption.addedRecently:
         return 'Added recently';
+      case LoanSortOption.minimumDue:
+        return 'Minimum due';
+      case LoanSortOption.interestRate:
+        return 'Interest rate';
     }
   }
 }
@@ -32,6 +44,7 @@ class AppState extends ChangeNotifier {
   static const _syncUpdatedAtKey = 'loans.syncUpdatedAt';
   static const _syncRevKey = 'loans.syncRev';
   static const _syncDeviceIdKey = 'loans.syncDeviceId';
+  static const _syncOwnerIdKey = 'loans.syncOwnerId';
 
   List<Loan> _loans = [];
   LoanSortOption _loanSort = LoanSortOption.nextPayment;
@@ -39,8 +52,10 @@ class AppState extends ChangeNotifier {
   DateTime _syncUpdatedAt = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
   String _syncRev = '0';
   String? _syncDeviceId;
+  String? _syncOwnerId;
   SyncService? _syncService;
   Future<String?> Function({bool forceRefresh})? _accessTokenProvider;
+  String? _syncUserId;
   bool _syncing = false;
   String? _syncError;
 
@@ -174,6 +189,8 @@ class AppState extends ChangeNotifier {
         a,
       ).compareTo(_payoffSortDate(b)),
       LoanSortOption.addedRecently => b.createdAt.compareTo(a.createdAt),
+      LoanSortOption.minimumDue => b.monthlyPayment.compareTo(a.monthlyPayment),
+      LoanSortOption.interestRate => b.annualRate.compareTo(a.annualRate),
     };
     if (result != 0) return result;
     return a.name.toLowerCase().compareTo(b.name.toLowerCase());
@@ -307,6 +324,7 @@ class AppState extends ChangeNotifier {
           DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
       _syncRev = prefs.getString(_syncRevKey) ?? '0';
       _syncDeviceId = prefs.getString(_syncDeviceIdKey);
+      _syncOwnerId = prefs.getString(_syncOwnerIdKey);
 
       final loansJson = prefs.getString(_loansKey);
       if (loansJson != null) {
@@ -352,8 +370,15 @@ class AppState extends ChangeNotifier {
     }
     _loaded = true;
     notifyListeners();
+    unawaited(_updateLauncherWidgets());
     if (_accessTokenProvider != null) {
-      unawaited(syncNow());
+      unawaited(
+        syncNow(
+          linkLocalData: _syncOwnerId == null && _syncUserId != null,
+          replaceLocalData: _syncOwnerId != null && _syncOwnerId != _syncUserId,
+          userId: _syncUserId,
+        ),
+      );
     }
   }
 
@@ -361,16 +386,27 @@ class AppState extends ChangeNotifier {
     _syncService = syncService;
   }
 
-  void setSyncSession(
-    Future<String?> Function({bool forceRefresh})? tokenProvider,
-  ) {
+  Future<void> setSyncSession(
+    Future<String?> Function({bool forceRefresh})? tokenProvider, {
+    String? userId,
+  }) {
     _accessTokenProvider = tokenProvider;
+    _syncUserId = userId;
     if (tokenProvider != null && _loaded) {
-      unawaited(syncNow());
+      return syncNow(
+        linkLocalData: _syncOwnerId == null && userId != null,
+        replaceLocalData: _syncOwnerId != null && _syncOwnerId != userId,
+        userId: userId,
+      );
     }
+    return Future.value();
   }
 
-  Future<void> syncNow() async {
+  Future<void> syncNow({
+    bool linkLocalData = false,
+    bool replaceLocalData = false,
+    String? userId,
+  }) async {
     final syncService = _syncService;
     final tokenProvider = _accessTokenProvider;
     if (syncService == null ||
@@ -391,6 +427,50 @@ class AppState extends ChangeNotifier {
         tokenProvider,
         accessToken,
       );
+      if (replaceLocalData && userId != null) {
+        _loans = remote == null
+            ? []
+            : remote.loans
+                  .map((item) => Loan.fromJson(item as Map<String, dynamic>))
+                  .toList();
+        _syncUpdatedAt =
+            remote?.updatedAt ??
+            DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+        _syncRev = remote?.rev ?? '0';
+        _syncDeviceId = remote?.deviceId;
+        _syncOwnerId = userId;
+        _cache.clear();
+        await _persist(markDirty: false);
+        notifyListeners();
+        return;
+      }
+      if (linkLocalData && userId != null) {
+        if (remote != null) {
+          final merged = <String, Loan>{};
+          for (final item in remote.loans) {
+            final loan = Loan.fromJson(item as Map<String, dynamic>);
+            merged[loan.id] = loan;
+          }
+          for (final loan in _loans) {
+            merged[loan.id] = loan;
+          }
+          _loans = merged.values.toList();
+          final now = DateTime.now().toUtc();
+          _syncUpdatedAt = now.isAfter(remote.updatedAt)
+              ? now
+              : remote.updatedAt.add(const Duration(microseconds: 1));
+          _syncRev = _syncUpdatedAt.microsecondsSinceEpoch.toString();
+          _cache.clear();
+        }
+        _syncOwnerId = userId;
+        await _persist(markDirty: false);
+        if (remote == null && _loans.isNotEmpty) {
+          await _pushSync();
+        } else if (remote != null) {
+          await _pushSync();
+        }
+        return;
+      }
       if (remote == null) {
         if (_loans.isNotEmpty) {
           await _pushSync();
@@ -440,6 +520,10 @@ class AppState extends ChangeNotifier {
       );
       await prefs.setString(_syncRevKey, _syncRev);
       await prefs.setString(_syncDeviceIdKey, _deviceId());
+      if (_syncOwnerId != null) {
+        await prefs.setString(_syncOwnerIdKey, _syncOwnerId!);
+      }
+      unawaited(_updateLauncherWidgets());
     } catch (e) {
       if (kDebugMode) {
         debugPrint('Failed to persist state: $e');
@@ -448,6 +532,41 @@ class AppState extends ChangeNotifier {
     if (markDirty) {
       unawaited(_pushSync());
     }
+  }
+
+  Future<void> _updateLauncherWidgets() async {
+    final active = activeLoans;
+    final upcoming = upcomingPaymentLoan();
+    final projected = projectedDebtBalances();
+    final originalBalance = _loans.fold<double>(
+      0,
+      (sum, loan) => sum + loan.principal,
+    );
+    final remaining = totalDebt;
+    final paidPercent = originalBalance <= 0
+        ? 100
+        : ((originalBalance - remaining) / originalBalance * 100)
+              .clamp(0, 100)
+              .round();
+
+    await LauncherWidgetService.update({
+      'hasDebts': active.isNotEmpty,
+      'minimumDue': minimumDue,
+      'strategyPayment': paymentWithStrategies,
+      'strategyExtra': strategyExtra,
+      'totalDebt': remaining,
+      'interestSaved': totalInterestSaved,
+      'paidPercent': paidPercent,
+      'monthsRemaining': projected.isEmpty ? 0 : projected.length - 1,
+      if (upcoming != null) ...{
+        'nextName': upcoming.name,
+        'nextType': upcoming.type.label,
+        'nextAmount': upcoming.monthlyPayment,
+        'nextStrategyAmount': nextPaymentWithStrategies(upcoming),
+        'nextBalance': currentBalance(upcoming),
+        'nextDate': nextPaymentDate(upcoming).millisecondsSinceEpoch,
+      },
+    });
   }
 
   Future<void> _pushSync() async {

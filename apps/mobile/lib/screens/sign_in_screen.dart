@@ -58,6 +58,25 @@ class SignInScreen extends StatelessWidget {
                           : const Text('Sign in with WorkOS'),
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                      onPressed: auth.busy ? null : auth.continueAsGuest,
+                      child: const Text('Continue without signing in'),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Your data stays on this device. You can sign in later to save it to your account.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w300,
+                      color: kSubtle,
+                      height: 1.4,
+                    ),
+                  ),
                   if (!auth.isConfigured) ...[
                     const SizedBox(height: 20),
                     const _SetupNotice(),

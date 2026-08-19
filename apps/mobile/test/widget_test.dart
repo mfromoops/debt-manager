@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_app/models/loan.dart';
@@ -9,10 +11,88 @@ import 'package:flutter_app/services/app_state.dart';
 import 'package:flutter_app/services/amortization_engine.dart';
 import 'package:flutter_app/services/auth_service.dart';
 import 'package:flutter_app/services/payoff_planner.dart';
+import 'package:flutter_app/services/sync_service.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  test('guest debts merge into the account on first sign in', () async {
+    SharedPreferences.setMockInitialValues({});
+    final localLoan = _testLoan('local', 'Local debt');
+    final remoteLoan = _testLoan('remote', 'Account debt');
+    final state = AppState();
+    await state.load();
+    await state.addLoan(localLoan);
+    final sync = _FakeSyncService(
+      remote: SyncDocument(
+        loans: [remoteLoan.toJson()],
+        updatedAt: DateTime.utc(2026, 8, 1),
+        rev: 'remote-rev',
+      ),
+    );
+    state.configureSync(sync);
+
+    await state.setSyncSession(
+      ({bool forceRefresh = false}) async => 'token',
+      userId: 'user-1',
+    );
+
+    expect(
+      state.loans.map((loan) => loan.id),
+      containsAll(['local', 'remote']),
+    );
+    expect(
+      sync.pushed!.loans.map((item) => (item as Map<String, dynamic>)['id']),
+      containsAll(['local', 'remote']),
+    );
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('loans.syncOwnerId'), 'user-1');
+  });
+
+  test(
+    'signing into a different account does not upload cached debts',
+    () async {
+      final oldLoan = _testLoan('old', 'Previous account debt');
+      final newLoan = _testLoan('new', 'New account debt');
+      SharedPreferences.setMockInitialValues({
+        'loans': '[${_jsonFor(oldLoan)}]',
+        'loans.syncOwnerId': 'user-1',
+        'loans.syncUpdatedAt': DateTime.utc(2026, 8, 18).toIso8601String(),
+        'loans.syncRev': 'old-rev',
+      });
+      final state = AppState();
+      await state.load();
+      final sync = _FakeSyncService(
+        remote: SyncDocument(
+          loans: [newLoan.toJson()],
+          updatedAt: DateTime.utc(2026, 8, 1),
+          rev: 'new-rev',
+        ),
+      );
+      state.configureSync(sync);
+
+      await state.setSyncSession(
+        ({bool forceRefresh = false}) async => 'token',
+        userId: 'user-2',
+      );
+
+      expect(state.loans.map((loan) => loan.id), ['new']);
+      expect(sync.pushed, isNull);
+    },
+  );
+
+  test('continue as guest is remembered', () async {
+    SharedPreferences.setMockInitialValues({});
+    final auth = AuthService();
+
+    await auth.continueAsGuest();
+
+    expect(auth.guestMode, isTrue);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool('auth.guestMode'), isTrue);
+    auth.dispose();
+  });
+
   test('Amortized loan computes standard payoff', () {
     final loan = Loan(
       id: '1',
@@ -206,6 +286,78 @@ void main() {
     expect(curve.first, closeTo(11000, 0.01));
     expect(curve.last, closeTo(0, 0.01));
     expect(curve, orderedEquals([...curve]..sort((a, b) => b.compareTo(a))));
+  });
+
+  test('Minimum due sort prioritizes the largest required payment', () async {
+    SharedPreferences.setMockInitialValues({});
+    final state = AppState();
+    await state.addLoan(
+      Loan(
+        id: 'small-minimum',
+        name: 'Smaller payment',
+        type: LoanType.creditCard,
+        principal: 2000,
+        annualRate: 10,
+        startDate: DateTime(2026, 1, 10),
+        paymentMode: PaymentMode.fixedPayment,
+        fixedMonthlyPayment: 100,
+      ),
+    );
+    await state.addLoan(
+      Loan(
+        id: 'large-minimum',
+        name: 'Larger payment',
+        type: LoanType.creditCard,
+        principal: 4000,
+        annualRate: 10,
+        startDate: DateTime(2026, 1, 20),
+        paymentMode: PaymentMode.fixedPayment,
+        fixedMonthlyPayment: 350,
+      ),
+    );
+
+    await state.setLoanSort(LoanSortOption.minimumDue);
+
+    expect(state.sortedLoans.map((loan) => loan.id), [
+      'large-minimum',
+      'small-minimum',
+    ]);
+  });
+
+  test('Interest rate sort prioritizes the highest rate', () async {
+    SharedPreferences.setMockInitialValues({});
+    final state = AppState();
+    await state.addLoan(
+      Loan(
+        id: 'low-interest',
+        name: 'Lower interest',
+        type: LoanType.personalLoan,
+        principal: 5000,
+        annualRate: 6,
+        startDate: DateTime(2026, 1, 10),
+        paymentMode: PaymentMode.fixedPayment,
+        fixedMonthlyPayment: 200,
+      ),
+    );
+    await state.addLoan(
+      Loan(
+        id: 'high-interest',
+        name: 'Higher interest',
+        type: LoanType.creditCard,
+        principal: 3000,
+        annualRate: 24,
+        startDate: DateTime(2026, 1, 20),
+        paymentMode: PaymentMode.fixedPayment,
+        fixedMonthlyPayment: 150,
+      ),
+    );
+
+    await state.setLoanSort(LoanSortOption.interestRate);
+
+    expect(state.sortedLoans.map((loan) => loan.id), [
+      'high-interest',
+      'low-interest',
+    ]);
   });
 
   test('Payment-only progress becomes a factual one-time extra', () {
@@ -674,4 +826,40 @@ void main() {
       },
     );
   });
+}
+
+Loan _testLoan(String id, String name) => Loan(
+  id: id,
+  name: name,
+  type: LoanType.personalLoan,
+  principal: 1000,
+  annualRate: 5,
+  startDate: DateTime(2026, 1),
+  paymentMode: PaymentMode.fixedPayment,
+  fixedMonthlyPayment: 100,
+);
+
+String _jsonFor(Loan loan) => jsonEncode(loan.toJson());
+
+class _FakeSyncService extends SyncService {
+  _FakeSyncService({this.remote});
+
+  SyncDocument? remote;
+  SyncDocument? pushed;
+
+  @override
+  bool get isConfigured => true;
+
+  @override
+  Future<SyncDocument?> fetchState(String accessToken) async => remote;
+
+  @override
+  Future<SyncDocument> pushState(
+    String accessToken,
+    SyncDocument document,
+  ) async {
+    pushed = document;
+    remote = document;
+    return document;
+  }
 }
