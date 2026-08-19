@@ -48,8 +48,8 @@ class Loan {
   final DateTime createdAt;
   final PaymentMode paymentMode;
 
-  /// For amortized loans.
-  final int termYears;
+  /// Duration of an amortized loan in months.
+  final int termMonths;
 
   /// For fixedPayment loans (credit cards etc.).
   final double fixedMonthlyPayment;
@@ -66,13 +66,13 @@ class Loan {
     required this.startDate,
     DateTime? createdAt,
     required this.paymentMode,
-    this.termYears = 30,
+    int? termMonths,
+    int? termYears,
     this.fixedMonthlyPayment = 0,
     this.extras = const [],
     this.progressEntries = const [],
-  }) : createdAt = createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-
-  int get termMonths => termYears * 12;
+  }) : termMonths = termMonths ?? (termYears ?? 30) * 12,
+       createdAt = createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
 
   double get monthlyRate => annualRate / 100 / 12;
 
@@ -117,7 +117,7 @@ class Loan {
     DateTime? startDate,
     DateTime? createdAt,
     PaymentMode? paymentMode,
-    int? termYears,
+    int? termMonths,
     double? fixedMonthlyPayment,
     List<ExtraPayment>? extras,
     List<ProgressEntry>? progressEntries,
@@ -131,7 +131,7 @@ class Loan {
       startDate: startDate ?? this.startDate,
       createdAt: createdAt ?? this.createdAt,
       paymentMode: paymentMode ?? this.paymentMode,
-      termYears: termYears ?? this.termYears,
+      termMonths: termMonths ?? this.termMonths,
       fixedMonthlyPayment: fixedMonthlyPayment ?? this.fixedMonthlyPayment,
       extras: extras ?? this.extras,
       progressEntries: progressEntries ?? this.progressEntries,
@@ -139,38 +139,38 @@ class Loan {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'type': type.index,
-        'principal': principal,
-        'annualRate': annualRate,
-        'startDate': startDate.toIso8601String(),
-        'createdAt': createdAt.toIso8601String(),
-        'paymentMode': paymentMode.index,
-        'termYears': termYears,
-        'fixedMonthlyPayment': fixedMonthlyPayment,
-        'extras': extras.map((e) => e.toJson()).toList(),
-        'progressEntries': progressEntries.map((e) => e.toJson()).toList(),
-      };
+    'id': id,
+    'name': name,
+    'type': type.index,
+    'principal': principal,
+    'annualRate': annualRate,
+    'startDate': startDate.toIso8601String(),
+    'createdAt': createdAt.toIso8601String(),
+    'paymentMode': paymentMode.index,
+    'termMonths': termMonths,
+    'fixedMonthlyPayment': fixedMonthlyPayment,
+    'extras': extras.map((e) => e.toJson()).toList(),
+    'progressEntries': progressEntries.map((e) => e.toJson()).toList(),
+  };
 
   factory Loan.fromJson(Map<String, dynamic> json) => Loan(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        type: LoanType.values[(json['type'] as num).toInt()],
-        principal: (json['principal'] as num).toDouble(),
-        annualRate: (json['annualRate'] as num).toDouble(),
-        startDate: DateTime.parse(json['startDate'] as String),
-        createdAt: _createdAtFromJson(json),
-        paymentMode:
-            PaymentMode.values[(json['paymentMode'] as num).toInt()],
-        termYears: (json['termYears'] as num?)?.toInt() ?? 30,
-        fixedMonthlyPayment:
-            (json['fixedMonthlyPayment'] as num?)?.toDouble() ?? 0,
-        extras: (json['extras'] as List<dynamic>? ?? [])
-            .map((e) => ExtraPayment.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        progressEntries: (json['progressEntries'] as List<dynamic>? ?? [])
-            .map((e) => ProgressEntry.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
+    id: json['id'] as String,
+    name: json['name'] as String,
+    type: LoanType.values[(json['type'] as num).toInt()],
+    principal: (json['principal'] as num).toDouble(),
+    annualRate: (json['annualRate'] as num).toDouble(),
+    startDate: DateTime.parse(json['startDate'] as String),
+    createdAt: _createdAtFromJson(json),
+    paymentMode: PaymentMode.values[(json['paymentMode'] as num).toInt()],
+    termMonths:
+        (json['termMonths'] as num?)?.toInt() ??
+        ((json['termYears'] as num?)?.toInt() ?? 30) * 12,
+    fixedMonthlyPayment: (json['fixedMonthlyPayment'] as num?)?.toDouble() ?? 0,
+    extras: (json['extras'] as List<dynamic>? ?? [])
+        .map((e) => ExtraPayment.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    progressEntries: (json['progressEntries'] as List<dynamic>? ?? [])
+        .map((e) => ProgressEntry.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
 }

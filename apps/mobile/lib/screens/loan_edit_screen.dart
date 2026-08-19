@@ -31,17 +31,22 @@ class _LoanEditScreenState extends State<LoanEditScreen> {
     final e = widget.existing;
     _nameCtrl = TextEditingController(text: e?.name ?? '');
     _principalCtrl = TextEditingController(
-        text: e != null ? e.principal.toStringAsFixed(0) : '');
-    _rateCtrl =
-        TextEditingController(text: e != null ? e.annualRate.toString() : '');
-    _termCtrl =
-        TextEditingController(text: e != null ? e.termYears.toString() : '30');
+      text: e != null ? e.principal.toStringAsFixed(0) : '',
+    );
+    _rateCtrl = TextEditingController(
+      text: e != null ? e.annualRate.toString() : '',
+    );
+    _termCtrl = TextEditingController(
+      text: e != null ? e.termMonths.toString() : '360',
+    );
     _paymentCtrl = TextEditingController(
-        text: e != null && e.fixedMonthlyPayment > 0
-            ? e.fixedMonthlyPayment.toStringAsFixed(0)
-            : '');
+      text: e != null && e.fixedMonthlyPayment > 0
+          ? e.fixedMonthlyPayment.toStringAsFixed(0)
+          : '',
+    );
     _type = e?.type ?? LoanType.mortgage;
-    _paymentMode = e?.paymentMode ??
+    _paymentMode =
+        e?.paymentMode ??
         (_type.usesFixedPayment
             ? PaymentMode.fixedPayment
             : PaymentMode.amortized);
@@ -119,33 +124,39 @@ class _LoanEditScreenState extends State<LoanEditScreen> {
       return;
     }
 
-    final name =
-        _nameCtrl.text.trim().isEmpty ? _defaultName() : _nameCtrl.text.trim();
+    final name = _nameCtrl.text.trim().isEmpty
+        ? _defaultName()
+        : _nameCtrl.text.trim();
 
     if (widget.existing != null) {
-      state.updateLoan(widget.existing!.copyWith(
-        name: name,
-        type: _type,
-        principal: principal,
-        annualRate: rate,
-        startDate: _startDate,
-        paymentMode: _paymentMode,
-        termYears: int.tryParse(_termCtrl.text) ?? widget.existing!.termYears,
-        fixedMonthlyPayment: fixedPayment,
-      ));
+      state.updateLoan(
+        widget.existing!.copyWith(
+          name: name,
+          type: _type,
+          principal: principal,
+          annualRate: rate,
+          startDate: _startDate,
+          paymentMode: _paymentMode,
+          termMonths:
+              int.tryParse(_termCtrl.text) ?? widget.existing!.termMonths,
+          fixedMonthlyPayment: fixedPayment,
+        ),
+      );
     } else {
-      state.addLoan(Loan(
-        id: DateTime.now().microsecondsSinceEpoch.toString(),
-        name: name,
-        type: _type,
-        principal: principal,
-        annualRate: rate,
-        startDate: _startDate,
-        paymentMode: _paymentMode,
-        termYears: int.tryParse(_termCtrl.text) ?? 30,
-        fixedMonthlyPayment: fixedPayment,
-        createdAt: DateTime.now(),
-      ));
+      state.addLoan(
+        Loan(
+          id: DateTime.now().microsecondsSinceEpoch.toString(),
+          name: name,
+          type: _type,
+          principal: principal,
+          annualRate: rate,
+          startDate: _startDate,
+          paymentMode: _paymentMode,
+          termMonths: int.tryParse(_termCtrl.text) ?? 360,
+          fixedMonthlyPayment: fixedPayment,
+          createdAt: DateTime.now(),
+        ),
+      );
     }
     Navigator.of(context).pop();
   }
@@ -157,10 +168,14 @@ class _LoanEditScreenState extends State<LoanEditScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
-        title: const Text('Delete loan?',
-            style: TextStyle(fontWeight: FontWeight.w300)),
-        content: Text('“${loan.name}” and its strategies will be removed.',
-            style: const TextStyle(fontWeight: FontWeight.w300)),
+        title: const Text(
+          'Delete loan?',
+          style: TextStyle(fontWeight: FontWeight.w300),
+        ),
+        content: Text(
+          '“${loan.name}” and its strategies will be removed.',
+          style: const TextStyle(fontWeight: FontWeight.w300),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
@@ -173,8 +188,10 @@ class _LoanEditScreenState extends State<LoanEditScreen> {
               // Pop edit screen and (if present) the loan detail below it.
               Navigator.of(context).popUntil((r) => r.isFirst);
             },
-            child: const Text('Delete',
-                style: TextStyle(color: Color(0xFFB3402E))),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: Color(0xFFB3402E)),
+            ),
           ),
         ],
       ),
@@ -229,10 +246,13 @@ class _LoanEditScreenState extends State<LoanEditScreen> {
                       borderRadius: BorderRadius.circular(4),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 8),
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
                           border: Border.all(
-                              color: selected ? kAccent : kHairline),
+                            color: selected ? kAccent : kHairline,
+                          ),
                           borderRadius: BorderRadius.circular(4),
                           color: selected
                               ? kAccent.withValues(alpha: 0.06)
@@ -242,8 +262,9 @@ class _LoanEditScreenState extends State<LoanEditScreen> {
                           t.label,
                           style: TextStyle(
                             fontSize: 13,
-                            fontWeight:
-                                selected ? FontWeight.w400 : FontWeight.w300,
+                            fontWeight: selected
+                                ? FontWeight.w400
+                                : FontWeight.w300,
                             color: selected ? kAccent : kSubtle,
                           ),
                         ),
@@ -258,7 +279,9 @@ class _LoanEditScreenState extends State<LoanEditScreen> {
                     labelText: 'Name (optional)',
                     hintText: _defaultName(),
                     hintStyle: const TextStyle(
-                        color: kHairline, fontWeight: FontWeight.w300),
+                      color: kHairline,
+                      fontWeight: FontWeight.w300,
+                    ),
                   ),
                   style: const TextStyle(fontSize: 16, color: kInk),
                 ),
@@ -284,8 +307,9 @@ class _LoanEditScreenState extends State<LoanEditScreen> {
                 const SizedBox(height: 28),
                 TextFormField(
                   controller: _rateCtrl,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
                   ],
@@ -320,15 +344,15 @@ class _LoanEditScreenState extends State<LoanEditScreen> {
                       helperText:
                           'Credit cards have no fixed term — set what you pay each month.',
                       helperStyle: TextStyle(
-                          color: kSubtle,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w300),
+                        color: kSubtle,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w300,
+                      ),
                     ),
                     style: const TextStyle(fontSize: 16, color: kInk),
                     validator: (v) {
                       if (!isFixed) return null;
-                      final n =
-                          double.tryParse((v ?? '').replaceAll(',', ''));
+                      final n = double.tryParse((v ?? '').replaceAll(',', ''));
                       if (n == null || n <= 0) return 'Enter a valid payment';
                       return null;
                     },
@@ -339,16 +363,16 @@ class _LoanEditScreenState extends State<LoanEditScreen> {
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     decoration: const InputDecoration(
-                      labelText: 'Term',
-                      suffixText: 'years',
+                      labelText: 'Duration',
+                      suffixText: 'months',
                       suffixStyle: TextStyle(color: kInk),
                     ),
                     style: const TextStyle(fontSize: 16, color: kInk),
                     validator: (v) {
                       if (isFixed) return null;
                       final n = int.tryParse(v ?? '');
-                      if (n == null || n <= 0 || n > 50) {
-                        return 'Enter a valid term (1–50)';
+                      if (n == null || n <= 0) {
+                        return 'Enter a valid duration in months';
                       }
                       return null;
                     },

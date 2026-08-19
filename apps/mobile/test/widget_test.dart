@@ -110,6 +110,31 @@ void main() {
     expect(result.neverPaysOff, isFalse);
   });
 
+  test('Amortized loan supports a duration in months', () {
+    final loan = Loan(
+      id: 'monthly-term',
+      name: '18-month loan',
+      type: LoanType.personalLoan,
+      principal: 18000,
+      annualRate: 0,
+      startDate: DateTime(2026, 1, 1),
+      paymentMode: PaymentMode.amortized,
+      termMonths: 18,
+    );
+
+    expect(loan.monthlyPayment, 1000);
+    expect(AmortizationEngine.simulate(loan, const []).monthsToPayoff, 18);
+    expect(Loan.fromJson(loan.toJson()).termMonths, 18);
+  });
+
+  test('Loan JSON still reads legacy durations stored in years', () {
+    final legacyJson = _testLoan('legacy', 'Legacy loan').toJson()
+      ..remove('termMonths')
+      ..['termYears'] = 5;
+
+    expect(Loan.fromJson(legacyJson).termMonths, 60);
+  });
+
   test('Extra payments shorten payoff and save interest', () {
     final loan = Loan(
       id: '2',
