@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debt Manager Web",
+      "name": "DebtFold Web",
       "request": "launch",
       "type": "dart",
       "deviceId": "chrome",
@@ -15,7 +15,7 @@
       ]
     },
     {
-      "name": "Debt Manager Android",
+      "name": "DebtFold Android",
       "request": "launch",
       "type": "dart",
       "toolArgs": [

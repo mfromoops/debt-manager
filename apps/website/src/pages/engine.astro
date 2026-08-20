@@ -1,4 +1,213 @@
 ---
-import Layout from '../layouts/Layout.astro';
+import Layout from "../layouts/Layout.astro";
+import ButtonLink from "../components/ButtonLink.astro";
+import { ArrowUpRight } from "@lucide/astro";
+
+const container = "container mx-auto px-8";
+const section = "border-t border-hairline py-20 md:py-28";
+const eyebrow = "mb-6 text-xs font-semibold tracking-wider text-brand uppercase";
+const heading = "m-0 max-w-4xl font-display text-4xl leading-tight font-medium md:text-5xl";
+
+const stages = [
+    { number: "01", title: "Normalize", copy: "Turn balances, APRs, minimums, dates, and payment cadence into one consistent debt model.", tag: "Inputs" },
+    { number: "02", title: "Simulate", copy: "Accrue interest and apply payments month by month, including extra payments and rollover behavior.", tag: "Ledger" },
+    { number: "03", title: "Compare", copy: "Run strategies from the same starting point and calculate the real difference in time and interest.", tag: "Scenarios" },
+    { number: "04", title: "Explain", copy: "Return a traceable schedule, payoff order, summary metrics, and explicit edge states.", tag: "Outputs" },
+];
+
+const capabilities = [
+    ["Strategy modeling", "Avalanche, snowball, minimum-only, and custom priority rules from a shared scenario."],
+    ["Payment rollover", "Redirect freed minimum payments as each balance reaches zero."],
+    ["Flexible contributions", "Model recurring extras and one-time payments without changing the underlying debt data."],
+    ["Complete schedules", "Return a month-by-month ledger of balances, interest, principal, and payments."],
+    ["Edge-state detection", "Identify negative amortization and plans that do not pay off within the forecast horizon."],
+    ["Stable comparisons", "The same inputs always produce the same outcome—ideal for testing, audit, and support."],
+];
+
+const integrationOptions = [
+    ["SDK / library", "Embed the calculation layer directly in your product stack.", "Lowest-latency experience"],
+    ["Hosted API", "Send a scenario and receive normalized, versioned forecast results.", "Fastest path to integration"],
+    ["Reference experience", "Adapt the full input, comparison, and explanation flow to your brand.", "Most complete starting point"],
+];
 ---
-<Layout title="The Debt Manager engine"><main class="simple wrap"><a class="wordmark" href="/">↗ debt manager</a><p class="eyebrow">For financial institutions</p><h1>A deterministic engine for clearer debt decisions.</h1><p class="lede">Model, simulate, compare, and explain payoff outcomes with a transparent monthly forecast. Bring a calmer, more useful debt experience to your customers.</p><div class="engine-grid"><div><p class="eyebrow">Input model</p><ul><li>Current balance and APR</li><li>Minimum payment or term</li><li>Payment cadence and dates</li><li>Recurring and one-time extras</li></ul></div><div><p class="eyebrow">Output model</p><ul><li>Monthly payoff schedule</li><li>Total interest and total paid</li><li>Payoff date and months</li><li>Comparison deltas and edge states</li></ul></div></div><h2>Integrate the logic, not the guesswork.</h2><p class="lede">Avalanche, snowball, and payment rollover behavior are deterministic and explainable. Integration documentation is available for evaluation; contact us to discuss an SDK/library, API, or white-label reference experience.</p><a class="button" href="mailto:hello@debtmanager.app">Talk about licensing ↗</a><a class="back" href="/">← Back home</a></main></Layout>
+
+<Layout title="DebtFold Engine — Deterministic debt payoff infrastructure">
+    <div class="relative isolate overflow-hidden bg-soft">
+        <div class="engine-grid pointer-events-none absolute inset-0 -z-20"></div>
+        <div class="pointer-events-none absolute -right-48 top-20 -z-10 size-[34rem] rounded-full bg-brand-focus/20 blur-3xl"></div>
+
+        <header class:list={[container, "flex h-20 items-center gap-8 border-b border-ink/10"]}>
+            <a class="mr-auto inline-flex items-center gap-2 text-lg font-semibold tracking-tighter font-display" href="/">
+                <img class="size-7 object-contain" src="/logo-new.png" alt="" />
+                <span>DebtFold</span>
+            </a>
+            <nav class="hidden gap-7 text-sm text-muted md:flex" aria-label="Primary navigation">
+                <a class="transition-colors hover:text-ink" href="/">Home</a>
+                <a class="transition-colors hover:text-ink" href="/#how">How it works</a>
+                <a class="font-medium text-ink" href="/engine" aria-current="page">Engine</a>
+            </nav>
+            <ButtonLink href="mailto:hello@debtman.app" size="compact">Talk to us <ArrowUpRight size={16} /></ButtonLink>
+        </header>
+
+        <section class:list={[container, "grid min-h-[calc(100vh-5rem)] items-center gap-14 py-20 lg:grid-cols-[.92fr_1.08fr] lg:py-24"]}>
+            <div>
+                <div class="mb-8 flex items-center gap-3 text-[10px] font-semibold tracking-[.18em] text-brand uppercase">
+                    <span class="h-px w-8 bg-brand"></span> Debt payoff infrastructure / v1
+                </div>
+                <h1 class="m-0 max-w-3xl font-display text-5xl leading-[1.06] font-medium tracking-tight md:text-7xl">
+                    A debt engine<br /><span class="text-brand">with nothing to hide.</span>
+                </h1>
+                <p class="my-7 max-w-2xl text-lg leading-relaxed text-muted md:text-xl">
+                    Model, calculate, and explain every month of a payoff plan. Built for teams that need predictable results and a clear answer to “why?”
+                </p>
+                <div class="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+                    <ButtonLink class="w-full sm:w-auto" href="mailto:hello@debtmanager.app">Evaluate the engine <ArrowUpRight size={16} /></ButtonLink>
+                    <a class="text-sm font-medium text-brand transition-colors hover:text-brand-dark" href="#architecture">Inspect the architecture ↓</a>
+                </div>
+                <div class="mt-12 flex flex-wrap gap-x-8 gap-y-3 border-t border-ink/10 pt-5 text-xs text-muted">
+                    <span class="font-mono"><b class="mr-2 font-normal text-brand">01</b>Versioned</span>
+                    <span class="font-mono"><b class="mr-2 font-normal text-brand">02</b>Auditable</span>
+                    <span class="font-mono"><b class="mr-2 font-normal text-brand">03</b>Testable</span>
+                </div>
+            </div>
+
+            <div class="relative mx-auto w-full max-w-2xl" aria-label="Illustration of the engine calculation pipeline">
+                <div class="absolute -inset-4 border border-brand/10 bg-white/30"></div>
+                <div class="relative border border-ink/15 bg-white shadow-xl shadow-brand-dark/5">
+                    <div class="flex items-center justify-between border-b border-ink/10 px-5 py-3 font-mono text-[10px] text-muted">
+                        <div><span class="mr-2 inline-block size-2 rounded-full bg-brand"></span>debtfold.engine / trace</div>
+                        <span>RUN #0042　<span class="text-brand">● PASS</span></span>
+                    </div>
+                    <div class="grid md:grid-cols-[.78fr_1.22fr]">
+                        <div class="border-b border-ink/10 bg-[#f7faf7] p-5 md:border-b-0 md:border-r md:p-6">
+                            <p class="m-0 font-mono text-[10px] text-brand uppercase">01 / normalized input</p>
+                            <div class="mt-6 space-y-4 font-mono text-[10px]">
+                                <div class="border-l-2 border-brand pl-3"><span class="text-muted">credit_card</span><b class="mt-1 block font-normal text-ink">8400.00 @ 24.99%</b></div>
+                                <div class="border-l-2 border-border pl-3"><span class="text-muted">auto_loan</span><b class="mt-1 block font-normal text-ink">18000.00 @ 7.25%</b></div>
+                                <div class="border-l-2 border-border pl-3"><span class="text-muted">student_loan</span><b class="mt-1 block font-normal text-ink">24000.00 @ 5.50%</b></div>
+                            </div>
+                            <div class="mt-8 border-t border-ink/10 pt-4 font-mono text-[10px]"><span class="text-muted">strategy</span><b class="float-right font-normal text-brand">AVALANCHE</b><br /><span class="text-muted">extra_monthly</span><b class="float-right font-normal">200.00</b></div>
+                        </div>
+                        <div class="p-5 md:p-6">
+                            <div class="flex items-center justify-between"><p class="m-0 font-mono text-[10px] text-brand uppercase">02 / monthly ledger</p><span class="font-mono text-[9px] text-muted">79 cycles</span></div>
+                            <div class="mt-6 space-y-1 font-mono text-[10px]">
+                                <div class="grid grid-cols-[2.5rem_1fr_1fr] gap-3 bg-soft px-3 py-2 text-muted"><span>MO</span><span>BALANCE</span><span>EVENT</span></div>
+                                <div class="grid grid-cols-[2.5rem_1fr_1fr] gap-3 border-b border-hairline px-3 py-2.5"><span class="text-muted">001</span><span>$49,649</span><span class="text-muted">calculated</span></div>
+                                <div class="grid grid-cols-[2.5rem_1fr_1fr] gap-3 border-b border-hairline px-3 py-2.5"><span class="text-muted">020</span><span>$33,618</span><span class="text-muted">calculated</span></div>
+                                <div class="grid grid-cols-[2.5rem_1fr_1fr] gap-3 border-b border-hairline px-3 py-2.5"><span class="text-muted">046</span><span>$14,502</span><span class="text-muted">calculated</span></div>
+                                <div class="grid grid-cols-[2.5rem_1fr_1fr] gap-3 px-3 py-2.5"><span class="text-muted">079</span><span>$0</span><span class="text-brand">paid_off ✓</span></div>
+                            </div>
+                            <div class="mt-6 grid grid-cols-3 border border-border">
+                                <div class="border-r border-border p-3"><small class="block font-mono text-[8px] text-muted uppercase">Payoff</small><b class="mt-1 block font-display text-sm font-medium">Aug ’32</b></div>
+                                <div class="border-r border-border p-3"><small class="block font-mono text-[8px] text-muted uppercase">Interest</small><b class="mt-1 block font-display text-sm font-medium">$10,328</b></div>
+                                <div class="p-3"><small class="block font-mono text-[8px] text-muted uppercase">Status</small><b class="mt-1 block font-display text-sm font-medium text-brand">Valid</b></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="relative -mt-px ml-auto flex w-64 items-center justify-between border border-t-0 border-ink/15 bg-ink px-4 py-3 font-mono text-[9px] text-white shadow-lg">
+                    <span class="text-white/50">OUTPUT HASH</span><span class="text-brand-pale">7F3A-91C2-0042</span>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <main>
+        <section class:list={[container, section, "grid gap-12 lg:grid-cols-[.75fr_1.25fr] lg:gap-24"]}>
+            <div><p class={eyebrow}>Built for consequential choices</p><h2 class={heading}>A forecast people can trust—and your team can defend.</h2></div>
+            <div class="grid gap-8 sm:grid-cols-2">
+                <div class="border-t border-ink pt-5"><span class="font-display text-4xl font-medium text-brand">100%</span><h3 class="mb-2 mt-5 font-display text-xl font-medium">Reproducible</h3><p class="m-0 text-sm leading-relaxed text-muted">Identical inputs and engine versions return identical schedules. No black-box variability.</p></div>
+                <div class="border-t border-ink pt-5"><span class="font-display text-4xl font-medium text-brand">1→N</span><h3 class="mb-2 mt-5 font-display text-xl font-medium">Comparable</h3><p class="m-0 text-sm leading-relaxed text-muted">Evaluate multiple strategies from one normalized scenario without introducing hidden differences.</p></div>
+                <div class="border-t border-hairline pt-5 sm:col-span-2"><p class="m-0 text-lg leading-relaxed">DebtFold exposes the assumptions behind each result: what was paid, where it went, how interest accrued, and why a target came next.</p></div>
+            </div>
+        </section>
+
+        <section id="architecture" class:list={[section, "bg-soft"]}>
+            <div class={container}>
+                <div class="grid gap-8 md:grid-cols-[1fr_auto] md:items-end">
+                    <div><p class={eyebrow}>Inside the engine</p><h2 class={heading}>From a financial snapshot to a complete payoff path.</h2></div>
+                    <p class="m-0 max-w-sm text-sm leading-relaxed text-muted">A clear four-stage pipeline keeps input handling, calculation, comparison, and explanation separate and testable.</p>
+                </div>
+                <div class="mt-14 grid border-x border-t border-border bg-white md:grid-cols-4">
+                    {stages.map((stage, index) => (
+                        <article class="relative border-b border-border p-6 md:min-h-80 md:border-r md:p-7 last:md:border-r-0">
+                            <div class="flex items-center justify-between"><span class="text-xs font-semibold text-brand">{stage.number}</span><span class="rounded-full bg-soft px-2.5 py-1 text-[10px] tracking-wider text-muted uppercase">{stage.tag}</span></div>
+                            <div class="my-9 flex h-12 items-center">
+                                <span class="grid size-11 place-items-center rounded-full border border-border bg-soft text-brand">{index === 0 ? "↓" : index === 1 ? "∑" : index === 2 ? "⇄" : "✓"}</span>
+                                {index < stages.length - 1 && <span class="ml-3 hidden h-px flex-1 bg-border md:block"></span>}
+                            </div>
+                            <h3 class="my-0 font-display text-2xl font-medium">{stage.title}</h3>
+                            <p class="mb-0 mt-3 text-sm leading-relaxed text-muted">{stage.copy}</p>
+                        </article>
+                    ))}
+                </div>
+            </div>
+        </section>
+
+        <section class:list={[container, section]}>
+            <div class="grid gap-12 lg:grid-cols-[.8fr_1.2fr] lg:gap-24">
+                <div class="lg:sticky lg:top-10 lg:self-start">
+                    <p class={eyebrow}>Capabilities</p><h2 class={heading}>The mechanics are detailed. The result stays simple.</h2>
+                    <p class="mt-6 max-w-md text-muted">Model the behaviors that shape a real payoff plan without forcing customers to understand the machinery underneath.</p>
+                </div>
+                <div class="grid sm:grid-cols-2">
+                    {capabilities.map(([title, copy], index) => (
+                        <article class:list={["border-t border-hairline py-7 sm:min-h-56", index % 2 === 0 ? "sm:pr-8" : "sm:border-l sm:pl-8"]}>
+                            <span class="text-xs text-brand">{String(index + 1).padStart(2, "0")}</span>
+                            <h3 class="mb-3 mt-8 font-display text-xl font-medium">{title}</h3>
+                            <p class="m-0 text-sm leading-relaxed text-muted">{copy}</p>
+                        </article>
+                    ))}
+                </div>
+            </div>
+        </section>
+
+        <section class:list={[section, "bg-ink text-white"]}>
+            <div class={container}>
+                <div class="grid gap-10 lg:grid-cols-2 lg:gap-24">
+                    <div><p class:list={[eyebrow, "text-brand-focus"]}>Integration paths</p><h2 class={heading}>Meet your product where it is.</h2></div>
+                    <p class="max-w-lg text-lg leading-relaxed text-inverse-muted">Use the engine as an embedded calculation layer, a service behind your application, or the foundation for a branded debt-planning experience.</p>
+                </div>
+                <div class="mt-14 grid border-t border-white/15 md:grid-cols-3">
+                    {integrationOptions.map(([title, copy, note], index) => (
+                        <article class:list={["border-b border-white/15 py-8 md:min-h-64 md:px-8", index === 0 ? "md:pl-0" : "md:border-l"]}>
+                            <span class="text-xs text-brand-focus">0{index + 1}</span>
+                            <h3 class="mb-3 mt-10 font-display text-2xl font-medium">{title}</h3>
+                            <p class="max-w-sm text-sm leading-relaxed text-inverse-muted">{copy}</p>
+                            <p class="mt-8 text-xs text-white/45">{note}</p>
+                        </article>
+                    ))}
+                </div>
+            </div>
+        </section>
+
+        <section class:list={[container, section]}>
+            <div class="overflow-hidden rounded-xl border border-border bg-soft px-7 py-12 md:px-12 md:py-16">
+                <div class="grid items-center gap-10 lg:grid-cols-[1fr_auto]">
+                    <div><p class={eyebrow}>Build a clearer debt experience</p><h2 class={heading}>Let customers see what changes before they choose.</h2><p class="mb-0 mt-5 max-w-2xl text-muted">Tell us what you are building. We’ll walk through the engine, integration options, and an evaluation scenario using synthetic data.</p></div>
+                    <ButtonLink class="w-full whitespace-nowrap sm:w-auto" href="mailto:hello@debtmanager.app">Talk about the engine <ArrowUpRight size={16} /></ButtonLink>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="border-t border-hairline py-10">
+        <div class:list={[container, "flex flex-wrap items-center gap-6"]}>
+            <a class="mr-auto inline-flex items-center gap-2 text-lg font-semibold tracking-tighter font-display" href="/"><img class="size-7 object-contain" src="/logo-new.png" alt="" /><span>DebtFold</span></a>
+            <div><a class="ml-5 text-sm text-muted-strong" href="/privacy">Privacy</a><a class="ml-5 text-sm text-muted-strong" href="/terms">Terms</a></div>
+            <small class="w-full text-xs text-muted-strong">© 2026 DebtFold. Illustrative information, not financial advice.</small>
+        </div>
+    </footer>
+</Layout>
+
+<style>
+    .engine-grid {
+        background-image:
+            linear-gradient(rgba(45, 106, 79, 0.07) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(45, 106, 79, 0.07) 1px, transparent 1px),
+            linear-gradient(rgba(45, 106, 79, 0.08) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(45, 106, 79, 0.08) 1px, transparent 1px);
+        background-size: 24px 24px, 24px 24px, 120px 120px, 120px 120px;
+        mask-image: linear-gradient(to bottom right, black 15%, transparent 82%);
+    }
+</style>

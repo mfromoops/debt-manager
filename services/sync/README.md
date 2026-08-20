@@ -1,4 +1,4 @@
-# Debt Manager Sync
+# DebtFold Sync
 
 Cloudflare Worker + Durable Object backend for local-first device sync.
 

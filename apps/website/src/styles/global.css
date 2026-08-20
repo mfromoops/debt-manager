@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+@theme {
+    --font-display: "Manrope", sans-serif;
+
+    --color-canvas: #fbfcfa;
+    --color-surface: #ffffff;
+    --color-ink: #1d2521;
+    --color-muted: #6f7973;
+    --color-muted-strong: #58645d;
+    --color-brand: #2d6a4f;
+    --color-brand-dark: #22533d;
+    --color-brand-focus: #91c2a8;
+    --color-brand-pale: #bce5cb;
+    --color-soft: #f3f7f4;
+    --color-border: #dce8e0;
+    --color-hairline: #e8ece9;
+    --color-chart-muted: #bac5be;
+    --color-inverse-muted: #b4c0b9;
+}

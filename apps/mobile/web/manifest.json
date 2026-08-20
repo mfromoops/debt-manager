@@ -1,11 +1,11 @@
 {
-    "name": "Debt Manager",
-    "short_name": "Debt Manager",
+    "name": "DebtFold",
+    "short_name": "DebtFold",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FBFCFA",
+    "theme_color": "#2D6A4F",
+    "description": "Track debts and simulate payoff strategies with DebtFold.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

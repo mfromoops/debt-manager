@@ -1,5 +1,5 @@
 name: flutter_app
-description: "Debt Manager - Track debts and simulate payoff strategies."
+description: "DebtFold - Track debts and simulate payoff strategies."
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -24,3 +24,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/icon/app_icon.png

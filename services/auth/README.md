@@ -1,6 +1,6 @@
-# Debt Manager Auth
+# DebtFold Auth
 
-Cloudflare Worker backend for the Debt Manager Flutter app's WorkOS AuthKit login.
+Cloudflare Worker backend for the DebtFold Flutter app's WorkOS AuthKit login.
 
 ## Endpoints
 
@@ -12,7 +12,7 @@ Request body:
 ```json
 {
 	"code": "01E2RJ4C05B52KKZ8FSRDAP23J",
-	"redirect_uri": "com.mortgagetracker.tracker://auth/callback"
+	"redirect_uri": "com.debtfold.app://auth/callback"
 }
 ```
 

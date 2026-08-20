@@ -1,6 +1,6 @@
-# Debt Manager
+# DebtFold
 
-Monorepo for a local-first Flutter debt tracker and its Cloudflare Worker backends. Debt Manager runs on Android and web, works in guest mode, and can optionally sync loan data through a WorkOS account.
+Monorepo for a local-first Flutter debt tracker and its Cloudflare Worker backends. DebtFold runs on Android and web, works in guest mode, and can optionally sync loan data through a WorkOS account.
 
 ## Current App
 

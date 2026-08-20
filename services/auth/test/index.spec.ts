@@ -42,7 +42,7 @@ describe("debt-manager-auth worker", () => {
 			headers: { "content-type": "application/json" },
 			body: JSON.stringify({
 				code: "auth-code",
-				redirect_uri: "com.mortgagetracker.tracker://auth/callback",
+				redirect_uri: "com.debtfold.app://auth/callback",
 			}),
 		});
 		const ctx = createExecutionContext();
@@ -64,7 +64,7 @@ describe("debt-manager-auth worker", () => {
 		});
 		expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({
 			code: "auth-code",
-			redirect_uri: "com.mortgagetracker.tracker://auth/callback",
+			redirect_uri: "com.debtfold.app://auth/callback",
 		});
 	});
 });

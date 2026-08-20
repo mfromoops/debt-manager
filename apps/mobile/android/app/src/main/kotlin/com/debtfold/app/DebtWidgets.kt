@@ -1,4 +1,4 @@
-package com.mortgagetracker.tracker
+package com.debtfold.app
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager

@@ -1,4 +1,14 @@
 ---
-import Layout from '../layouts/Layout.astro';
+import Layout from "../layouts/Layout.astro";
+import { ArrowUpRight } from "@lucide/astro";
 ---
-<Layout title="Debt Manager privacy"><main class="simple wrap"><a class="wordmark" href="/">↗ debt manager</a><p class="eyebrow">Privacy</p><h1>Your debt details stay yours.</h1><p class="lede">The public scenario on this site uses synthetic data. We do not ask for or collect real debt details in the marketing demo. The app handles account data according to its own privacy controls.</p><a class="back" href="/">← Back home</a></main></Layout>
+
+<Layout title="DebtFold privacy">
+    <main class="mx-auto max-w-4xl px-5 pt-14 pb-30 md:px-8">
+        <a class="mb-30 inline-flex items-center gap-2 font-display text-lg font-semibold tracking-tight" href="/"><ArrowUpRight size={18} /> DebtFold</a>
+        <p class="mb-6 text-xs font-semibold tracking-widest text-brand uppercase">Privacy</p>
+        <h1 class="max-w-3xl font-display text-5xl leading-tight font-medium md:text-6xl">Your debt details stay yours.</h1>
+        <p class="mt-7 mb-7.5 max-w-2xl text-lg text-muted">The public scenario on this site uses synthetic data. We do not ask for or collect real debt details in the marketing demo. The app handles account data according to its own privacy controls.</p>
+        <a class="mt-24 block text-sm text-brand" href="/">← Back home</a>
+    </main>
+</Layout>

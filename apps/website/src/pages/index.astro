@@ -1,299 +1,210 @@
 ---
 import Layout from "../layouts/Layout.astro";
+import ButtonLink from "../components/ButtonLink.astro";
+import { ArrowUpRight } from "@lucide/astro";
+
+const container = "container mx-auto px-8";
+const section = "border-t border-hairline py-20 md:py-28";
+const eyebrow =
+    "mb-6 text-xs font-semibold tracking-wider text-brand uppercase";
+const heading =
+    "m-0 max-w-5xl text-4xl leading-tight font-medium md:text-5xl font-display";
+const steps = [
+    ["01", "Model", "Enter balances, rates, payments, dates, and cadence."],
+    ["02", "Simulate", "Project debt month by month, including interest and extra payments."],
+    ["03", "Compare", "See avalanche, snowball, minimum-only, and custom outcomes."],
+    ["04", "Act", "Apply a strategy, track progress, and update the forecast."],
+];
+const capabilities = [
+    ["Multi-debt projections", "See all balances move together in one month-by-month forecast."],
+    ["Payment rollover", "When one balance closes, its payment moves to the next target."],
+    ["Interest and principal", "Separate the cost of borrowing from the progress you make."],
+    ["Never-pays-off warnings", "Surface insufficient payments instead of hiding an impossible result."],
+    ["Explainable assumptions", "Every result can be traced back to the inputs and strategy."],
+    ["Deterministic outputs", "The same scenario always produces the same forecast."],
+];
 ---
 
-<Layout title="Debt Manager — See what changes before you choose a strategy">
-    <header class="nav wrap">
-        <a class="wordmark" href="/"
-            ><img class="brand-logo" src="/logo-new.png" alt="" /><span
-                >debt manager</span
-            ></a
-        ><nav class="nav-links">
-            <a href="#how">How it works</a><a href="/engine">Engine</a><a
-                href="/methodology">Methodology</a>
-        </nav><a class="button small header-cta" href="#simulator">Try it ↗</a>
-    </header>
-    <main>
-        <section>
-            <div class="hero-copy">
-                <p class="eyebrow">Debt payoff simulator</p><h1>
-                    Know which debt move changes your timeline.
-                </h1><p class="lede">
-                    Compare avalanche, snowball, and extra-payment plans before
-                    you commit. Debt Manager turns balances, rates, and budgets
-                    into a month-by-month payoff forecast.
-                </p><div class="actions">
-                    <a class="button" href="#simulator">Run a demo forecast ↗</a
-                    ><a class="secondary-button" href="#institutions"
-                        >For banks and fintechs →</a>
-                </div><p class="trust-cue">
-                    Synthetic example · Visible assumptions · No account
-                    required
-                </p>
-            </div><figure class="hero-art">
-                <img src="/hero.png" alt="" aria-hidden="true" />
-            </figure>
-        </section>
-        <section class="section problem wrap">
-            <p class="eyebrow">The tradeoff is the point</p><h2>
-                Most debt decisions are made without seeing the tradeoff.
-            </h2><div class="three">
-                <div>
-                    <span class="num">01</span><p>
-                        Paying extra toward the wrong balance can cost time and
-                        interest.
-                    </p>
-                </div><div>
-                    <span class="num">02</span><p>
-                        A spreadsheet shows numbers; it rarely shows the whole
-                        path.
-                    </p>
-                </div><div>
-                    <span class="num">03</span><p>
-                        A strategy only works when you can understand it and
-                        keep following it.
-                    </p>
-                </div>
-            </div>
-        </section>
-        <section id="simulator" class="section sim">
-            <div class="wrap">
-                <div class="intro">
-                    <p class="eyebrow">Try a scenario</p><h2>
-                        Change one number. See what changes.
-                    </h2><p>
-                        Explore a synthetic example using the same explainable
-                        logic that powers Debt Manager.
-                    </p>
-                </div><div class="sim-grid">
-                    <div class="card controls">
-                        <div class="control-head">
-                            <span class="eyebrow">Your extra budget</span
-                            ><output id="budget-output">$200 / month</output>
-                        </div><input
-                            id="budget"
-                            type="range"
-                            min="0"
-                            max="800"
-                            step="25"
-                            value="200"
-                            aria-label="Extra monthly budget"
-                        /><div class="range">
-                            <span>$0</span><span>$800</span>
-                        </div><p class="eyebrow toggle-label">Strategy</p><div
-                            class="toggle"
-                            role="group"
-                            aria-label="Payoff strategy"
-                        >
-                            <button class="active" data-strategy="avalanche"
-                                >Avalanche</button
-                            ><button data-strategy="snowball">Snowball</button>
-                        </div><label class="field"
-                            >One-time payment <small>(optional)</small><div
-                                class="input"
-                            >
-                                $ <input
-                                    id="lump"
-                                    value="0"
-                                    inputmode="numeric"
-                                    aria-label="One-time payment"
-                                />
-                            </div></label
-                        ><button class="reset" id="reset">Reset demo</button
-                        ><div class="debt-inputs">
-                            <p class="eyebrow">Synthetic debts</p><div>
-                                Credit card <b>$8,400</b><small
-                                    >24.99% APR · $250 minimum</small>
-                            </div><div>
-                                Auto loan <b>$18,000</b><small
-                                    >7.25% APR · $420 minimum</small>
-                            </div><div>
-                                Student loan <b>$24,000</b><small
-                                    >5.50% APR · $275 minimum</small>
-                            </div>
-                        </div>
-                    </div><div class="card">
-                        <div class="result-head">
-                            <div>
-                                <p class="eyebrow">Projected outcome</p><h3
-                                    id="strategy-title"
-                                >
-                                    Avalanche plan
-                                </h3>
-                            </div><span class="pill">Synthetic data</span>
-                        </div><div class="metrics">
-                            <div>
-                                <small>Debt-free</small><strong id="date"
-                                    >May 2031</strong>
-                            </div><div>
-                                <small>Interest paid</small><strong
-                                    id="interest">$13,580</strong>
-                            </div><div>
-                                <small>Months saved</small><strong
-                                    class="green"
-                                    id="months">18</strong>
-                            </div>
-                        </div><svg
-                            class="sim-chart"
-                            viewBox="0 0 640 220"
-                            role="img"
-                            aria-label="Projected balance declining over time"
-                            ><path
-                                class="grid"
-                                d="M0 20H640M0 70H640M0 120H640M0 170H640"
-                            ></path><path
-                                class="line muted"
-                                d="M0 19 C100 30 210 55 310 90 S500 145 640 180"
-                            ></path><path
-                                id="selected"
-                                class="line accent"
-                                d="M0 19 C80 38 135 72 190 112 S300 174 380 180 L640 180"
-                            ></path></svg
-                        ><div class="sim-legend">
-                            <i class="dot-muted"></i> Minimum payments　 <i
-                                class="dot-accent"></i> Selected plan
-                        </div><div class="payoff">
-                            Payoff order　 <b>01</b>
-                            <span id="first">Credit card</span>
-                            <b>02</b> Auto loan　 <b>03</b> Student loan
-                        </div><p class="explain" id="explain">
-                            This example applies $200/month above minimum
-                            payments using Avalanche. The highest-rate balance
-                            receives the extra amount first; when it is paid
-                            off, its payment rolls to the next balance.
-                        </p><p
-                            class="screen-reader"
-                            id="result-summary"
-                            aria-live="polite"
-                        >
-                        </p>
+<Layout title="DebtFold — See what changes before you choose a strategy" class="relative">
+    <header class:list={["px-2 sticky top-0 flex h-20 items-center gap-8 border-b border-white/15 bg-ink text-white"]}>
+            <a class="mr-auto inline-flex items-center gap-2 text-lg font-semibold tracking-tighter font-display" href="/">
+                <img class="size-7 object-contain drop-shadow-lg" src="/logo-new.png" alt="" />
+                <span>DebtFold</span>
+            </a>
+            <nav class="hidden gap-7 sticky top-0 text-sm text-white/75 md:flex" aria-label="Primary navigation">
+                <a class="transition-colors text-white" href="/">Home</a>
+                <a class="transition-colors hover:text-white" href="#how">How it works</a><a class="transition-colors hover:text-white" href="/engine">Engine</a>
+            </nav>
+            <ButtonLink href="#simulator" variant="outline-light" size="compact">Try it <ArrowUpRight size={16} /></ButtonLink>
+        </header>
+    <div class="relative isolate overflow-hidden bg-ink text-white">
+        <div class="home-grid pointer-events-none absolute inset-0 -z-20 opacity-25"></div>
+        <div class="pointer-events-none absolute -right-48 top-10 -z-10 size-[36rem] rounded-full bg-brand/30 blur-3xl"></div>
+        <div class="pointer-events-none absolute -left-64 bottom-0 -z-10 size-[30rem] rounded-full bg-brand-dark/30 blur-3xl"></div>
+
+
+        <section class:list={[container, "grid min-h-[calc(100vh-5rem)] items-center gap-14 py-20 lg:grid-cols-[1.02fr_.98fr] lg:py-24"]}>
+            <div>
+                    <p class:list={[eyebrow, "text-brand-pale"]}>Debt payoff simulator</p>
+                    <h1 class="m-0 max-w-3xl text-5xl leading-[1.08] font-medium tracking-tight md:text-7xl font-display">See the move.<br /><span class="text-brand-pale">Then make it.</span></h1>
+                    <p class="my-7 max-w-2xl text-lg leading-relaxed text-white/75 md:text-xl">Compare payoff strategies before you commit. DebtFold turns your balances, rates, and budget into a month-by-month path out of debt.</p>
+                    <div class="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+                        <ButtonLink class="w-full sm:w-auto" href="#simulator">Run a demo forecast <ArrowUpRight size={16} /></ButtonLink>
+                        <a class="text-sm font-medium text-white/80 transition-colors hover:text-white" href="https://app.debtfold.com">Open DebtFold →</a>
                     </div>
-                </div><p class="trust-cue">
-                    Synthetic example · Visible assumptions · No account
-                    required
-                </p><p class="disclaimer">
-                    Illustrative example. Results depend on the information
-                    entered and are not financial advice.
-                </p><a class="button" href="https://dm.mariofloresdev.com"
-                    >Try with your own debts ↗</a>
+                    <div class="mt-12 flex flex-wrap gap-x-8 gap-y-3 border-t border-white/15 pt-5 text-xs text-white/55">
+                        <span><i class="mr-2 inline-block size-1.5 rounded-full bg-brand-focus"></i>No account required</span>
+                        <span><i class="mr-2 inline-block size-1.5 rounded-full bg-brand-focus"></i>Visible assumptions</span>
+                        <span><i class="mr-2 inline-block size-1.5 rounded-full bg-brand-focus"></i>Synthetic demo</span>
+                    </div>
             </div>
-        </section>
-        <section id="how" class="section wrap">
-            <div class="intro">
-                <p class="eyebrow">The explainable engine</p><h2>
-                    A plan you can explain, not just a number you can admire.
-                </h2>
-            </div><div class="steps">
-                <div>
-                    <span>01</span><h3>Model</h3><p>
-                        Enter balances, rates, payments, dates, and cadence.
-                    </p>
-                </div><div>
-                    <span>02</span><h3>Simulate</h3><p>
-                        Project debt month by month, including interest and
-                        extra payments.
-                    </p>
-                </div><div>
-                    <span>03</span><h3>Compare</h3><p>
-                        See avalanche, snowball, minimum-only, and custom
-                        outcomes.
-                    </p>
-                </div><div>
-                    <span>04</span><h3>Act</h3><p>
-                        Apply a strategy, track progress, and update the
-                        forecast.
-                    </p>
+
+            <div class="relative mx-auto w-full max-w-xl" aria-label="Comparison of minimum payments and a selected payoff plan">
+                <div class="absolute -inset-5 rounded-3xl border border-white/5 bg-white/3"></div>
+                <div class="relative overflow-hidden rounded-xl border border-white/15 bg-[#15201b]/90 shadow-2xl shadow-black/30 backdrop-blur">
+                    <div class="flex items-center justify-between border-b border-white/10 px-5 py-4">
+                        <div class="flex items-center gap-2 text-xs text-white/55"><span class="size-2 rounded-full bg-brand-focus"></span> Your payoff forecast</div>
+                        <span class="rounded-full border border-white/10 px-2.5 py-1 text-[10px] tracking-wider text-white/55 uppercase">Scenario 01</span>
+                    </div>
+                    <div class="grid grid-cols-2 border-b border-white/10">
+                        <div class="border-r border-white/10 p-5 md:p-6">
+                            <small class="block text-[10px] tracking-wider text-white/45 uppercase">Minimum payments</small>
+                            <strong class="mt-2 block font-display text-2xl font-medium text-white/65 md:text-3xl">Nov 2032</strong>
+                            <span class="mt-1 block text-xs text-white/40">$17,940 interest</span>
+                        </div>
+                        <div class="relative p-5 md:p-6">
+                            <span class="absolute right-4 top-4 rounded-full bg-brand-focus/15 px-2 py-1 text-[9px] text-brand-pale">SELECTED</span>
+                            <small class="block text-[10px] tracking-wider text-brand-pale/70 uppercase">Your plan</small>
+                            <strong class="mt-2 block font-display text-2xl font-medium md:text-3xl">May 2031</strong>
+                            <span class="mt-1 block text-xs text-brand-pale">$4,360 less interest</span>
+                        </div>
+                    </div>
+                    <div class="p-5 md:p-7">
+                        <div class="mb-4 flex items-end justify-between">
+                            <div><p class="m-0 text-xs font-medium">Balance remaining</p><p class="m-0 text-[10px] text-white/40">One choice, two possible paths</p></div>
+                            <span class="font-display text-xl text-brand-pale">18 months sooner</span>
+                        </div>
+                        <svg class="w-full overflow-visible" viewBox="0 0 480 185" role="img" aria-label="Selected payoff plan reaches zero eighteen months before minimum payments">
+                            <defs><linearGradient id="home-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#91c2a8" stop-opacity=".3"/><stop offset="1" stop-color="#91c2a8" stop-opacity="0"/></linearGradient></defs>
+                            <g stroke="rgba(255,255,255,.09)" stroke-width="1"><path d="M0 10H480M0 60H480M0 110H480M0 160H480"/><path d="M0 10V160M120 10V160M240 10V160M360 10V160M480 10V160"/></g>
+                            <path d="M0 20C74 32 128 49 182 67S296 97 354 119 431 150 480 160" fill="none" stroke="#78877f" stroke-width="2" stroke-dasharray="5 6"/>
+                            <path d="M0 20C57 37 105 59 145 77S229 111 267 128 320 153 344 160H480V160H0Z" fill="url(#home-area)"/>
+                            <path class="hero-forecast-line" d="M0 20C57 37 105 59 145 77S229 111 267 128 320 153 344 160H480" fill="none" stroke="#bce5cb" stroke-width="3" pathLength="1" stroke-dasharray="1"/>
+                            <circle cx="344" cy="160" r="5" fill="#bce5cb"/><path d="M344 160V176" stroke="#bce5cb"/>
+                            <text x="344" y="184" fill="#bce5cb" font-size="9" text-anchor="middle">YOU</text><text x="480" y="176" fill="#78877f" font-size="9" text-anchor="end">MINIMUMS</text>
+                        </svg>
+                        <div class="mt-4 grid grid-cols-3 gap-2 border-t border-white/10 pt-4 text-[10px] text-white/45">
+                            <span><b class="mr-1 text-brand-pale">01</b> Credit card</span><span><b class="mr-1 text-brand-pale">02</b> Auto loan</span><span><b class="mr-1 text-brand-pale">03</b> Student loan</span>
+                        </div>
+                    </div>
                 </div>
-            </div><a class="text-link" href="/engine">Explore the engine →</a>
-        </section>
-        <section class="section capability-section wrap">
-            <p class="eyebrow">Engine capabilities</p><h2>
-                Small inputs. A complete picture.
-            </h2><div class="capabilities">
-                <div>
-                    <b>Multi-debt projections</b><p>
-                        See all balances move together in one month-by-month
-                        forecast.
-                    </p>
-                </div><div>
-                    <b>Payment rollover</b><p>
-                        When one balance closes, its payment moves to the next
-                        target.
-                    </p>
-                </div><div>
-                    <b>Interest and principal</b><p>
-                        Separate the cost of borrowing from the progress you
-                        make.
-                    </p>
-                </div><div>
-                    <b>Never-pays-off warnings</b><p>
-                        Surface insufficient payments instead of hiding an
-                        impossible result.
-                    </p>
-                </div><div>
-                    <b>Explainable assumptions</b><p>
-                        Every result can be traced back to the inputs and
-                        strategy.
-                    </p>
-                </div><div>
-                    <b>Deterministic outputs</b><p>
-                        The same scenario always produces the same forecast.
-                    </p>
-                </div>
-            </div><div class="bank-callout">
-                <p class="eyebrow">Why banks care</p><p>
-                    The same explainable simulation layer can power a
-                    debt-planning experience inside a bank, credit union,
-                    fintech, or financial-wellness platform.
-                </p>
-            </div>
-        </section>
-        <section id="institutions" class="section institution">
-            <div class="wrap institution-grid">
-                <div>
-                    <p class="eyebrow">For financial institutions</p><h2>
-                        Give people a clearer way to move forward.
-                    </h2>
-                </div><div>
-                    <p>
-                        License the deterministic simulation engine for your
-                        bank, credit union, fintech, or financial-wellness
-                        product.
-                    </p><a
-                        class="button button-light"
-                        href="mailto:hello@debtmanager.app"
-                        >Talk about the engine ↗</a>
+                <div class="relative -mt-3 ml-auto mr-4 flex w-52 items-center gap-3 rounded-md border border-brand-focus/30 bg-brand-dark px-4 py-3 shadow-xl md:-mr-5">
+                    <span class="grid size-8 place-items-center rounded-full bg-brand-focus/15 text-brand-pale"><ArrowUpRight size={16} /></span>
+                    <span><small class="block text-[9px] tracking-wider text-brand-pale/70 uppercase">Extra payment</small><b class="text-xs font-medium">$200 / month applied</b></span>
                 </div>
             </div>
         </section>
-        <section class="section wrap">
-            <p class="eyebrow">Built for trust</p><div class="trust-grid">
-                <h2>Clear assumptions.<br />No hidden advice.</h2><div>
-                    <p>
-                        Debt Manager models the information you provide. It does
-                        not connect to your bank, recommend lending products, or
-                        make promises about your financial future.
-                    </p><a class="text-link" href="/methodology"
-                        >Read our methodology →</a>
+    </div>
+
+    <main>
+        <section class:list={[container, section, "grid gap-12 lg:grid-cols-[.8fr_1.2fr] lg:gap-24"]}>
+            <div><p class={eyebrow}>The tradeoff is the point</p><h2 class={heading}>A payment is a choice about your future.</h2><p class="mt-6 max-w-md text-muted">DebtFold shows the full consequence of that choice before any money moves.</p></div>
+            <div class="grid gap-7 sm:grid-cols-3">
+                <div class="border-t border-ink pt-5"><span class="text-xs text-brand">01</span><p class="mb-0 mt-10 text-lg leading-relaxed">See which balance gets your next dollar.</p></div>
+                <div class="border-t border-ink pt-5"><span class="text-xs text-brand">02</span><p class="mb-0 mt-10 text-lg leading-relaxed">Understand the time and interest it changes.</p></div>
+                <div class="border-t border-ink pt-5"><span class="text-xs text-brand">03</span><p class="mb-0 mt-10 text-lg leading-relaxed">Choose a plan you can actually keep following.</p></div>
+            </div>
+        </section>
+
+        <section id="simulator" class:list={[section, "border-border bg-soft"]}>
+            <div class={container}>
+                <div class="mb-12 grid gap-8 md:grid-cols-[1fr_auto] md:items-end"><div><p class={eyebrow}>Try a scenario</p><h2 class={heading}>Change one number. See what changes.</h2></div><p class="m-0 max-w-sm text-sm leading-relaxed text-muted">Explore a synthetic example using the same explainable logic that powers DebtFold.</p></div>
+                <div class="grid gap-5 md:grid-cols-3">
+                    <div class="order-2 self-start rounded-xl border border-border bg-white p-6 shadow-sm md:order-none">
+                        <div class="flex items-baseline justify-between"><span class:list={[eyebrow, "m-0"]}>Your extra budget</span><output id="budget-output" class="font-semibold whitespace-nowrap text-brand">$200 / month</output></div>
+                        <input id="budget" class="mt-6 w-full accent-brand" type="range" min="0" max="800" step="25" value="200" aria-label="Extra monthly budget" />
+                        <div class="flex justify-between text-xs text-muted-strong"><span>$0</span><span>$800</span></div>
+                        <p class:list={[eyebrow, "mt-9"]}>Strategy</p>
+                        <div class="grid grid-cols-2 rounded-md bg-soft p-1" role="group" aria-label="Payoff strategy">
+                            <button class="cursor-pointer rounded-sm border-0 bg-transparent p-2 text-muted transition-colors aria-pressed:bg-white aria-pressed:text-ink aria-pressed:shadow-sm" data-strategy="avalanche" aria-pressed="true">Avalanche</button>
+                            <button class="cursor-pointer rounded-sm border-0 bg-transparent p-2 text-muted transition-colors aria-pressed:bg-white aria-pressed:text-ink aria-pressed:shadow-sm" data-strategy="snowball" aria-pressed="false">Snowball</button>
+                        </div>
+                        <label class="mt-7 block text-sm">One-time payment <small>(optional)</small><div class="mt-2 flex items-center gap-2 border border-hairline p-2 text-muted">$ <input id="lump" class="w-full border-0 outline-0" value="0" inputmode="numeric" aria-label="One-time payment" /></div></label>
+                        <button class="mt-7 cursor-pointer border-0 bg-transparent text-muted underline" id="reset">Reset demo</button>
+                        <div class="mt-7 border-t border-hairline pt-5">
+                            <p class={eyebrow}>Synthetic debts</p>
+                            <div class="border-b border-hairline py-2.5 text-xs">Credit card <b class="float-right font-medium">$8,400</b><small class="block text-xs text-muted-strong">24.99% APR · $250 minimum</small></div>
+                            <div class="border-b border-hairline py-2.5 text-xs">Auto loan <b class="float-right font-medium">$18,000</b><small class="block text-xs text-muted-strong">7.25% APR · $420 minimum</small></div>
+                            <div class="border-b border-hairline py-2.5 text-xs">Student loan <b class="float-right font-medium">$24,000</b><small class="block text-xs text-muted-strong">5.50% APR · $275 minimum</small></div>
+                        </div>
+                    </div>
+                    <div class="rounded-xl border border-border bg-white p-6 shadow-sm md:col-span-2 md:p-8">
+                        <div class="flex gap-4 justify-between"><div><p class={eyebrow}>Projected outcome</p><h3 id="strategy-title" class="m-0 text-2xl leading-tight font-medium font-display">Avalanche plan</h3></div><span class="h-min rounded-full bg-soft px-3 py-1 text-[10px] tracking-wider whitespace-nowrap text-brand uppercase">Synthetic data</span></div>
+                        <div class="my-6 grid grid-cols-3 gap-2 border-y border-hairline py-4">
+                            <div><small class="block text-xs text-muted">Debt-free</small><strong id="date" class="text-xl font-medium tracking-tight md:text-2xl font-display">May 2031</strong></div>
+                            <div><small class="block text-xs text-muted">Interest paid</small><strong id="interest" class="text-xl font-medium tracking-tight md:text-2xl font-display">$13,580</strong></div>
+                            <div><small class="block text-xs text-muted">Payoff time</small><strong id="months" class="text-xl font-medium tracking-tight text-brand md:text-2xl font-display">—</strong></div>
+                        </div>
+                        <svg class="w-full" viewBox="0 0 640 220" role="img" aria-label="Projected balance declining over time">
+                            <path class="fill-none stroke-hairline stroke-1" d="M48 20H630M48 70H630M48 120H630M48 180H630M48 20V180"></path>
+                            <path id="minimum-plan" class="fill-none stroke-chart-muted stroke-2" d=""></path>
+                            <path id="selected" class="fill-none stroke-brand stroke-2" d="" pathLength="1" stroke-dasharray="1"></path>
+                            <text id="chart-max-balance" class="fill-muted text-xs" x="42" y="24" text-anchor="end">$0</text>
+                            <text class="fill-muted text-xs" x="42" y="184" text-anchor="end">$0</text>
+                            <text class="fill-muted text-xs" x="48" y="198" text-anchor="middle">0</text>
+                            <text id="chart-max-months" class="fill-muted text-xs" x="630" y="198" text-anchor="middle">0</text>
+                            <text class="fill-muted text-xs" x="339" y="216" text-anchor="middle">Months</text>
+                            <text class="fill-muted text-xs" x="12" y="100" text-anchor="middle" transform="rotate(-90 12 100)">Balance remaining</text>
+                        </svg>
+                        <div class="text-xs leading-8 text-muted-strong md:leading-normal"><i class="mr-1.5 inline-block size-2 rounded-full bg-chart-muted"></i> Minimum payments　 <i class="mr-1.5 inline-block size-2 rounded-full bg-brand"></i> Selected plan</div>
+                        <div class="mt-5 flex flex-wrap items-center gap-x-2 border-t border-hairline pt-4 text-xs leading-relaxed text-muted-strong">Payoff order　 <b class="text-brand">01</b> <span id="first">Credit card</span> <b class="text-brand">02</b> Auto loan　 <b class="text-brand">03</b> Student loan</div>
+                        <p id="explain" class="text-sm text-muted my-2">This example applies $200/month above minimum payments using Avalanche. The highest-rate balance receives the extra amount first; when it is paid off, its payment rolls to the next balance.</p>
+                        <p id="result-summary" class="sr-only" aria-live="polite"></p>
+                    </div>
+                </div>
+                <p class="text-xs text-muted-strong my-4">Illustrative example. Results depend on the information entered and are not financial advice.</p>
+                <ButtonLink href="https://app.debtfold.com">Try with your own debts <ArrowUpRight size={16} /></ButtonLink>
+            </div>
+        </section>
+
+        <section id="how" class={section}>
+            <div class={container}>
+                <div class="grid gap-8 md:grid-cols-[1fr_auto] md:items-end"><div><p class={eyebrow}>How it works</p><h2 class={heading}>From scattered balances to one clear plan.</h2></div><a class="text-sm font-medium text-brand" href="/engine">Explore the engine →</a></div>
+                <div class="mt-14 grid border-x border-t border-border bg-white md:grid-cols-4">
+                    {steps.map(([number, title, copy], index) => <article class="border-b border-border p-6 md:min-h-72 md:border-r md:p-7 last:md:border-r-0"><div class="flex items-center justify-between"><span class="text-xs text-brand">{number}</span><span class="grid size-9 place-items-center rounded-full bg-soft text-brand">{index === 0 ? "↓" : index === 1 ? "∑" : index === 2 ? "⇄" : "✓"}</span></div><h3 class="mb-3 mt-16 text-2xl leading-tight font-medium font-display">{title}</h3><p class="m-0 max-w-xs text-sm leading-relaxed text-muted">{copy}</p></article>)}
                 </div>
             </div>
         </section>
-    </main><footer class="footer">
-        <div class="wrap">
-            <a class="wordmark" href="/"
-                ><img class="brand-logo" src="/logo-new.png" alt="" /><span
-                    >debt manager</span
-                ></a
-            ><div>
-                <a href="/methodology">Methodology</a><a href="/privacy"
-                    >Privacy</a
-                ><a href="/terms">Terms</a>
-            </div><small
-                >© 2026 Debt Manager. Illustrative information, not financial
-                advice.</small>
-        </div>
-    </footer>
+
+        <section class:list={[container, section]}>
+            <div class="grid gap-12 lg:grid-cols-[.75fr_1.25fr] lg:gap-24">
+                <div class="lg:sticky lg:top-10 lg:self-start"><p class={eyebrow}>What you can see</p><h2 class={heading}>Small inputs. A complete picture.</h2><p class="mt-6 max-w-md text-muted">Every result connects back to your balances, your budget, and the strategy you chose.</p></div>
+                <div class="grid sm:grid-cols-2">
+                    {capabilities.map(([title, copy], index) => <article class:list={["border-t border-hairline py-7 sm:min-h-52", index % 2 === 0 ? "sm:pr-8" : "sm:border-l sm:pl-8"]}><span class="text-xs text-brand">{String(index + 1).padStart(2, "0")}</span><h3 class="mb-3 mt-7 text-xl font-medium font-display">{title}</h3><p class="m-0 text-sm leading-relaxed text-muted">{copy}</p></article>)}
+                </div>
+            </div>
+        </section>
+
+        <section id="institutions" class:list={[section, "bg-ink text-white"]}>
+            <div class={container}>
+                <div class="grid gap-10 md:grid-cols-2 md:gap-20">
+                    <div><p class:list={[eyebrow, "text-brand-focus"]}>For financial institutions</p><h2 class={heading}>Give people a clearer way to move forward.</h2></div>
+                    <div><p class="max-w-lg text-lg leading-relaxed text-inverse-muted">License the deterministic simulation engine for your bank, credit union, fintech, or financial-wellness product.</p><div class="mt-7 flex flex-wrap items-center gap-5"><ButtonLink href="mailto:hello@debtmanager.app">Talk about the engine <ArrowUpRight size={16} /></ButtonLink><a class="text-sm text-white/70" href="/engine">See technical details →</a></div></div>
+                </div>
+                <div class="mt-16 grid border-t border-white/15 text-sm text-white/55 md:grid-cols-3"><div class="border-b border-white/15 py-5 md:border-r">Deterministic outputs</div><div class="border-b border-white/15 py-5 md:border-r md:px-7">Explainable assumptions</div><div class="border-b border-white/15 py-5 md:pl-7">Flexible integration paths</div></div>
+            </div>
+        </section>
+
+
+    </main>
+
+    <footer class="border-t border-hairline py-10"><div class:list={[container, "flex flex-wrap items-center gap-6"]}>
+        <a class="mr-auto inline-flex items-center gap-2 text-lg font-semibold tracking-tighter font-display" href="/"><img class="size-7 object-contain" src="/logo-new.png" alt="" /><span>DebtFold</span></a>
+        <div><a class="ml-5 text-sm text-muted-strong" href="/privacy">Privacy</a><a class="ml-5 text-sm text-muted-strong" href="/terms">Terms</a></div>
+        <small class="w-full text-xs text-muted-strong">© 2026 DebtFold. Illustrative information, not financial advice.</small>
+    </div></footer>
 </Layout>
+
 <script>
     import { DEMO_DEBTS, simulateDebts, type Strategy } from "../lib/debt-engine";
     const budget = document.querySelector("#budget") as HTMLInputElement,
@@ -306,56 +217,82 @@ import Layout from "../layouts/Layout.astro";
         explain = document.querySelector("#explain") as HTMLElement,
         first = document.querySelector("#first") as HTMLElement,
         summary = document.querySelector("#result-summary") as HTMLElement,
+        minimumPath = document.querySelector("#minimum-plan") as SVGPathElement,
+        selectedPath = document.querySelector("#selected") as SVGPathElement,
+        chartMaxBalance = document.querySelector("#chart-max-balance") as SVGTextElement,
+        chartMaxMonths = document.querySelector("#chart-max-months") as SVGTextElement,
         reset = document.querySelector("#reset") as HTMLButtonElement;
-    const strategyButtons =
-        document.querySelectorAll<HTMLButtonElement>("[data-strategy]");
+    const strategyButtons = document.querySelectorAll<HTMLButtonElement>("[data-strategy]");
+    const minimumResult = simulateDebts(DEMO_DEBTS, 0, "avalanche");
     let strategy: Strategy = "avalanche";
-    function update() {
-        const extra = Number(budget.value),
-            one = Number((lump.value || "0").replace(/[^0-9]/g, "")),
-            result = simulateDebts(DEMO_DEBTS, extra, strategy, one),
-            label = strategy[0].toUpperCase() + strategy.slice(1);
-        out.textContent = `$${extra.toLocaleString()} / month`;
-        interest.textContent = result.neverPaysOff
-            ? "Does not pay off"
-            : `$${Math.round(result.interest).toLocaleString()}`;
-        months.textContent = result.neverPaysOff ? "—" : String(result.months);
-        date.textContent = result.neverPaysOff
-            ? "Not reached"
-            : result.payoffDate ? 
-             result.payoffDate.toLocaleDateString("en-US", {
-                  month: "short",
-                  year: "numeric",
-              }) : "Not reached";
-        title.textContent = `${label} plan`;
-        first.textContent = result.order[0] || "Credit card";
-        explain.textContent = `This example applies $${extra.toLocaleString()}/month above minimum payments using ${label}. ${strategy === "avalanche" ? "The highest-rate balance receives the extra amount first" : "The smallest balance receives the extra amount first"}; when it is paid off, its payment rolls to the next balance.`;
-        if (summary)
-            summary.textContent = result.neverPaysOff
-                ? "This scenario does not pay off within the forecast horizon."
-                : `Projected payoff in ${result.months} months, with ${Math.round(result.interest).toLocaleString()} dollars of interest. First payoff target: ${result.order[0]}.`;
+    let chartAnimation: Animation | undefined;
+
+    function chartPath(balances: number[], months: number, maximumBalance: number) {
+        const left = 48;
+        const right = 630;
+        const width = right - left;
+        const top = 20;
+        const bottom = 180;
+        const step = Math.max(1, Math.ceil(balances.length / 100));
+        const points = balances
+            .map((balance, month) => ({ balance, month }))
+            .filter(({ month }) => month % step === 0 || month === balances.length - 1)
+            .map(({ balance, month }) => {
+                const x = left + (month / months) * width;
+                const y = bottom - (balance / maximumBalance) * (bottom - top);
+                return `${x.toFixed(1)} ${y.toFixed(1)}`;
+            });
+        return points.map((point, index) => `${index === 0 ? "M" : "L"}${point}`).join(" ");
     }
-    budget.addEventListener("input", update);
-    lump.addEventListener("input", update);
-    strategyButtons.forEach((b) =>
-        b.addEventListener("click", () => {
-            strategyButtons.forEach((x) => x.classList.remove("active"));
-            b.classList.add("active");
-            strategy = b.dataset.strategy as Strategy;
-            update();
-        }),
-    );
-    reset.addEventListener("click", () => {
-        budget.value = String(200);
-        lump.value = String(0);
-        strategy = "avalanche";
-        strategyButtons.forEach((b) =>
-                b.classList.toggle(
-                    "active",
-                    b.dataset.strategy === "avalanche",
-                ),
+
+    function updateChart(balances: number[]) {
+        const months = Math.max(minimumResult.balances.length - 1, balances.length - 1, 1);
+        const maximumBalance = Math.max(...minimumResult.balances, ...balances, 1);
+        chartMaxBalance.textContent = `$${Math.round(maximumBalance / 1000)}k`;
+        chartMaxMonths.textContent = String(months);
+        minimumPath.setAttribute("d", chartPath(minimumResult.balances, months, maximumBalance));
+        selectedPath.setAttribute("d", chartPath(balances, months, maximumBalance));
+        chartAnimation?.cancel();
+        chartAnimation = selectedPath.animate(
+            [{ strokeDashoffset: "1" }, { strokeDashoffset: "0" }],
+            { duration: 300, easing: "ease-out" },
         );
-        update();
-    });
+    }
+
+    function update() {
+        const extra = Number(budget.value), one = Number((lump.value || "0").replace(/[^0-9]/g, "")), result = simulateDebts(DEMO_DEBTS, extra, strategy, one), label = strategy[0].toUpperCase() + strategy.slice(1);
+        out.textContent = `$${extra.toLocaleString()} / month`;
+        interest.textContent = result.neverPaysOff ? "Does not pay off" : `$${Math.round(result.interest).toLocaleString()}`;
+        months.textContent = result.neverPaysOff ? "—" : `${result.months} mo.`;
+        date.textContent = result.neverPaysOff ? "Not reached" : result.payoffDate ? result.payoffDate.toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "Not reached";
+        title.textContent = `${label} plan`; first.textContent = result.order[0] || "Credit card";
+        explain.textContent = `This example applies $${extra.toLocaleString()}/month above minimum payments using ${label}. ${strategy === "avalanche" ? "The highest-rate balance receives the extra amount first" : "The smallest balance receives the extra amount first"}; when it is paid off, its payment rolls to the next balance.`;
+        summary.textContent = result.neverPaysOff ? "This scenario does not pay off within the forecast horizon." : `Projected payoff in ${result.months} months, with ${Math.round(result.interest).toLocaleString()} dollars of interest. First payoff target: ${result.order[0]}.`;
+        updateChart(result.balances);
+    }
+    budget.addEventListener("input", update); lump.addEventListener("input", update);
+    strategyButtons.forEach((button) => button.addEventListener("click", () => { strategyButtons.forEach((candidate) => candidate.setAttribute("aria-pressed", String(candidate === button))); strategy = button.dataset.strategy as Strategy; update(); }));
+    reset.addEventListener("click", () => { budget.value = "200"; lump.value = "0"; strategy = "avalanche"; strategyButtons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.strategy === "avalanche"))); update(); });
     update();
 </script>
+
+<style>
+    .home-grid {
+        background-image:
+            linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+        background-size: 64px 64px;
+        mask-image: linear-gradient(to bottom right, black, transparent 78%);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        .hero-forecast-line {
+            animation: draw-home-forecast 1.2s ease-out both;
+        }
+    }
+
+    @keyframes draw-home-forecast {
+        from { stroke-dashoffset: 1; }
+        to { stroke-dashoffset: 0; }
+    }
+</style>

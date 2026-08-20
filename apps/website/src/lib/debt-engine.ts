@@ -25,7 +25,7 @@ export function simulateDebts(debts: DemoDebt[], extra = 0, strategy: Strategy =
   let interest = 0;
   let totalPaid = Math.max(0, oneTime);
   const order: string[] = [];
-  const balances: number[] = accounts.map((a) => a.balance);
+  const balances: number[] = [accounts.reduce((sum, account) => sum + account.balance, 0)];
   let month = 0;
   let availableOneTime = Math.max(0, oneTime);
 

@@ -6,7 +6,7 @@ class AuthConfig {
       String.fromEnvironment('AUTH_BACKEND_BASE_URL');
   static const redirectUri = String.fromEnvironment(
     'WORKOS_REDIRECT_URI',
-    defaultValue: 'com.mortgagetracker.tracker://auth/callback',
+    defaultValue: 'com.debtfold.app://auth/callback',
   );
   static const provider = String.fromEnvironment('WORKOS_PROVIDER');
   static const organizationId = String.fromEnvironment('WORKOS_ORGANIZATION_ID');

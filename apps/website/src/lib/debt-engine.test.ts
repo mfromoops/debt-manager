@@ -15,6 +15,12 @@ describe('synthetic debt engine', () => {
     expect(first.order[0]).toBe('Credit card');
     expect(second.order[0]).toBe('Credit card');
   });
+  it('returns a total balance series for charting', () => {
+    const result = simulateDebts(DEMO_DEBTS, 200, 'avalanche');
+    const initialBalance = DEMO_DEBTS.reduce((sum, debt) => sum + debt.balance, 0);
+    expect(result.balances[0]).toBe(initialBalance);
+    expect(result.balances.at(-1)).toBe(0);
+  });
   it('surfaces a never-pays-off case', () => {
     const result = simulateDebts([{ name: 'High APR', balance: 1000, apr: 100, minimum: 1 }]);
     expect(result.neverPaysOff).toBe(true);

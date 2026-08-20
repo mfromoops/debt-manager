@@ -1,6 +1,6 @@
-# Debt Manager
+# DebtFold
 
-Debt Manager is a minimalist Flutter app for tracking debts, projecting payoff dates, and testing strategies for becoming debt-free sooner. It supports mortgages, credit cards, personal loans, auto loans, student loans, and other debts.
+DebtFold is a minimalist Flutter app for tracking debts, projecting payoff dates, and testing strategies for becoming debt-free sooner. It supports mortgages, credit cards, personal loans, auto loans, student loans, and other debts.
 
 The app is local-first: it works without an account and stores data on the device. Users can optionally sign in with WorkOS to sync their data through the Cloudflare backend.
 
@@ -66,7 +66,7 @@ The app is local-first: it works without an account and stores data on the devic
 
 ### Android launcher widgets
 
-The Android build includes three display-only home-screen widgets that open Debt Manager when tapped:
+The Android build includes three display-only home-screen widgets that open DebtFold when tapped:
 
 - **Payment cycle** — required payment, strategy extras, and next due date.
 - **Debt progress** — remaining debt, percentage paid, interest saved, and projected time remaining.
@@ -74,7 +74,7 @@ The Android build includes three display-only home-screen widgets that open Debt
 
 ## Architecture
 
-Debt Manager lives in a pnpm monorepo with three projects:
+DebtFold lives in a pnpm monorepo with three projects:
 
 | Project | Path | Purpose |
 |---|---|---|
@@ -184,7 +184,7 @@ pnpm sync:dev
 Configure this callback URI in WorkOS for Android:
 
 ```text
-com.mortgagetracker.tracker://auth/callback
+com.debtfold.app://auth/callback
 ```
 
 Then start the Android app with public build-time settings:
@@ -279,8 +279,8 @@ The repository also provides `pnpm mobile:build:apk`, `pnpm mobile:build:web`, a
 
 | Field | Value |
 |---|---|
-| App name | Debt Manager |
-| Android package | `com.mortgagetracker.tracker` |
+| App name | DebtFold |
+| Android package | `com.debtfold.app` |
 | Version | `1.0.0+1` |
 | Flutter platforms in this repository | Android and web |
 

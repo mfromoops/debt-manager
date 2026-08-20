@@ -23,8 +23,15 @@ class SignInScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Image.asset(
+                    'assets/icon/app_icon.png',
+                    width: 72,
+                    height: 72,
+                    semanticLabel: 'DebtFold logo',
+                  ),
+                  const SizedBox(height: 20),
                   const Text(
-                    'Debt Manager',
+                    'DebtFold',
                     style: TextStyle(
                       fontSize: 34,
                       fontWeight: FontWeight.w200,
