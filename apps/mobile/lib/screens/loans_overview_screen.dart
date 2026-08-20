@@ -43,20 +43,38 @@ class LoansOverviewScreen extends StatelessWidget {
     final upcomingDate = upcomingLoan == null
         ? null
         : state.nextPaymentDate(upcomingLoan);
+    final viewportWidth = MediaQuery.sizeOf(context).width;
+    final useWideOverview = viewportWidth >= 720;
+    final pagePadding = viewportWidth >= 1100
+        ? 32.0
+        : viewportWidth >= 600
+            ? 24.0
+            : 16.0;
 
     return Scaffold(
       body: SafeArea(
         child: state.loans.isEmpty
             ? _emptyState(context)
             : SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 24),
-                    Container(
+                child: Center(
+                  child: ConstrainedBox(
+                    key: const Key('overview-content'),
+                    constraints: const BoxConstraints(maxWidth: 1120),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: pagePadding),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(height: viewportWidth >= 600 ? 24 : 16),
+                          Container(
+                      key: const Key('payoff-forecast-panel'),
                       width: double.infinity,
-                      padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+                      padding: EdgeInsets.fromLTRB(
+                        useWideOverview ? 24 : 20,
+                        18,
+                        useWideOverview ? 24 : 20,
+                        useWideOverview ? 24 : 20,
+                      ),
                       decoration: BoxDecoration(
                         color: kInk,
                         borderRadius: BorderRadius.circular(18),
@@ -133,7 +151,6 @@ class LoansOverviewScreen extends StatelessWidget {
                                         color: Color(0xFFB4C0B9),
                                       ),
                                     ),
-                                  const SizedBox(width: 8),
                                   _accountMenu(
                                     context,
                                     auth,
@@ -174,151 +191,77 @@ class LoansOverviewScreen extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 22),
-                          _PaymentOverview(
-                            minimumDue: state.minimumDue,
-                            strategyPayment: state.paymentWithStrategies,
-                            strategyExtra: state.strategyExtra,
-                            upcomingLoan: upcomingLoan,
-                            upcomingDate: upcomingDate,
-                            monthlyIncome: state.monthlyIncome,
-                          ),
-                          const SizedBox(height: 14),
-                          _DebtProgressCard(
-                            balance: state.totalDebt,
-                            interestSaved: state.totalInterestSaved,
-                            projectedBalances: state.projectedDebtBalances(),
-                          ),
+                          if (useWideOverview)
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: _PaymentOverview(
+                                    minimumDue: state.minimumDue,
+                                    strategyPayment:
+                                        state.paymentWithStrategies,
+                                    strategyExtra: state.strategyExtra,
+                                    upcomingLoan: upcomingLoan,
+                                    upcomingDate: upcomingDate,
+                                    monthlyIncome: state.monthlyIncome,
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: _DebtProgressCard(
+                                    balance: state.totalDebt,
+                                    interestSaved: state.totalInterestSaved,
+                                    projectedBalances:
+                                        state.projectedDebtBalances(),
+                                    height: state.strategyExtra > 0.005
+                                        ? 360
+                                        : 300,
+                                  ),
+                                ),
+                              ],
+                            )
+                          else ...[
+                            _PaymentOverview(
+                              minimumDue: state.minimumDue,
+                              strategyPayment: state.paymentWithStrategies,
+                              strategyExtra: state.strategyExtra,
+                              upcomingLoan: upcomingLoan,
+                              upcomingDate: upcomingDate,
+                              monthlyIncome: state.monthlyIncome,
+                            ),
+                            const SizedBox(height: 14),
+                            _DebtProgressCard(
+                              balance: state.totalDebt,
+                              interestSaved: state.totalInterestSaved,
+                              projectedBalances: state.projectedDebtBalances(),
+                            ),
+                          ],
                         ],
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
                     _IncomeFreedomCard(
                       monthlyIncome: state.monthlyIncome,
                       minimumDue: state.minimumDue,
                       releases: state.strategyPaymentReleases(),
                     ),
-                    const SizedBox(height: 28),
-                    InkWell(
-                      key: const Key('strategy-schedule-entry'),
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const StrategyScheduleScreen(),
+                    const SizedBox(height: 16),
+                    if (useWideOverview)
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: _strategyScheduleEntry(context, state),
                           ),
-                        );
-                      },
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
-                        ),
-                        decoration: BoxDecoration(
-                          color: kSurface,
-                          border: Border.all(color: kBorder),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.calendar_month_outlined,
-                              size: 18,
-                              color: kAccent,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Strategy schedule',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w400,
-                                      color: kInk,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    state.strategySchedule.isEmpty
-                                        ? 'Plan a pause or temporary reduction'
-                                        : '${state.strategySchedule.length} scheduled window${state.strategySchedule.length == 1 ? '' : 's'}',
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w300,
-                                      color: kSubtle,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const Icon(
-                              Icons.chevron_right,
-                              size: 18,
-                              color: kSubtle,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    // Payoff Planner entry
-                    InkWell(
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const PlannerScreen(),
-                          ),
-                        );
-                      },
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
-                        ),
-                        decoration: BoxDecoration(
-                          color: kSoft,
-                          border: Border.all(color: kAccent),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Row(
-                          children: [
-                            Icon(
-                              Icons.route_outlined,
-                              size: 18,
-                              color: kAccent,
-                            ),
-                            SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Payoff Planner',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w400,
-                                      color: kAccent,
-                                    ),
-                                  ),
-                                  SizedBox(height: 2),
-                                  Text(
-                                    'Avalanche vs snowball — where should extra money go?',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w300,
-                                      color: kSubtle,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Icon(Icons.chevron_right, size: 18, color: kSubtle),
-                          ],
-                        ),
-                      ),
-                    ),
+                          const SizedBox(width: 12),
+                          Expanded(child: _plannerEntry(context)),
+                        ],
+                      )
+                    else ...[
+                      _strategyScheduleEntry(context, state),
+                      const SizedBox(height: 12),
+                      _plannerEntry(context),
+                    ],
                     const SizedBox(height: 36),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -374,7 +317,10 @@ class LoansOverviewScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 40),
-                  ],
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ),
       ),
@@ -385,6 +331,33 @@ class LoansOverviewScreen extends StatelessWidget {
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => const LoanEditScreen()));
+  }
+
+  Widget _strategyScheduleEntry(BuildContext context, AppState state) {
+    return _OverviewEntry(
+      entryKey: const Key('strategy-schedule-entry'),
+      icon: Icons.calendar_month_outlined,
+      title: 'Strategy schedule',
+      subtitle: state.strategySchedule.isEmpty
+          ? 'Plan a pause or temporary reduction'
+          : '${state.strategySchedule.length} scheduled window${state.strategySchedule.length == 1 ? '' : 's'}',
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const StrategyScheduleScreen()),
+      ),
+    );
+  }
+
+  Widget _plannerEntry(BuildContext context) {
+    return _OverviewEntry(
+      entryKey: const Key('payoff-planner-entry'),
+      icon: Icons.route_outlined,
+      title: 'Payoff Planner',
+      subtitle: 'Avalanche vs snowball — where should extra money go?',
+      emphasized: true,
+      onTap: () => Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const PlannerScreen())),
+    );
   }
 
   Widget _emptyState(BuildContext context) {
@@ -528,6 +501,82 @@ class LoansOverviewScreen extends StatelessWidget {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('All strategies removed.')));
+  }
+}
+
+class _OverviewEntry extends StatelessWidget {
+  final Key? entryKey;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final bool emphasized;
+
+  const _OverviewEntry({
+    this.entryKey,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.emphasized = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        key: entryKey,
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          width: double.infinity,
+          constraints: const BoxConstraints(minHeight: 76),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: emphasized ? kSoft : kSurface,
+            border: Border.all(color: emphasized ? kAccent : kBorder),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 18, color: kAccent),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        color: emphasized ? kAccent : kInk,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        height: 1.35,
+                        fontWeight: FontWeight.w300,
+                        color: kSubtle,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right, size: 18, color: kSubtle),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -889,11 +938,13 @@ class _DebtProgressCard extends StatelessWidget {
   final double balance;
   final double interestSaved;
   final List<double> projectedBalances;
+  final double height;
 
   const _DebtProgressCard({
     required this.balance,
     required this.interestSaved,
     required this.projectedBalances,
+    this.height = 252,
   });
 
   @override
@@ -904,7 +955,7 @@ class _DebtProgressCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       child: Container(
         key: const Key('debt-progress-card'),
-        height: 244,
+        height: height,
         decoration: BoxDecoration(
           color: const Color(0xFF15201B),
           border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
@@ -1034,7 +1085,9 @@ class _ProjectedBalancePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final plot = Rect.fromLTRB(48, 136, size.width - 12, size.height - 28);
+    // Keep the chart below the summary copy. Previously the plot began at 136,
+    // which put its BALANCE label on top of the interest-saved line.
+    final plot = Rect.fromLTRB(48, 148, size.width - 12, size.height - 28);
     final maxBalance = balances.isEmpty
         ? 0.0
         : balances.reduce((a, b) => a > b ? a : b);
@@ -1204,6 +1257,7 @@ class _PaymentOverview extends StatelessWidget {
     final remainingIncome = income == null ? null : income - strategyPayment;
 
     return Container(
+      key: const Key('payment-overview-card'),
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(

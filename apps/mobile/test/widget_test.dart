@@ -649,7 +649,9 @@ void main() {
     expect(strategyReleases.first.loanNames, ['Short loan']);
   });
 
-  testWidgets('Redesigned home fits a narrow phone viewport', (tester) async {
+  testWidgets('Redesigned home reflows between phone and tablet viewports', (
+    tester,
+  ) async {
     SharedPreferences.setMockInitialValues({});
     tester.view.physicalSize = const Size(320, 800);
     tester.view.devicePixelRatio = 1;
@@ -696,11 +698,45 @@ void main() {
     expect(find.byKey(const Key('debt-progress-chart')), findsOneWidget);
     expect(
       tester.getSize(find.byKey(const Key('debt-progress-card'))).height,
-      244,
+      252,
     );
     expect(find.byKey(const Key('debt-narrow-home-minimum')), findsOneWidget);
     expect(find.byKey(const Key('debt-narrow-home-date')), findsOneWidget);
     expect(find.byKey(const Key('debt-narrow-home-strategy')), findsOneWidget);
+    final narrowPayment = tester.getRect(
+      find.byKey(const Key('payment-overview-card')),
+    );
+    final narrowProgress = tester.getRect(
+      find.byKey(const Key('debt-progress-card')),
+    );
+    final narrowSchedule = tester.getRect(
+      find.byKey(const Key('strategy-schedule-entry')),
+    );
+    final narrowPlanner = tester.getRect(
+      find.byKey(const Key('payoff-planner-entry')),
+    );
+    expect(narrowProgress.top, greaterThan(narrowPayment.bottom));
+    expect(narrowPlanner.top, greaterThan(narrowSchedule.bottom));
+
+    tester.view.physicalSize = const Size(800, 900);
+    await tester.pump();
+
+    final widePayment = tester.getRect(
+      find.byKey(const Key('payment-overview-card')),
+    );
+    final wideProgress = tester.getRect(
+      find.byKey(const Key('debt-progress-card')),
+    );
+    final wideSchedule = tester.getRect(
+      find.byKey(const Key('strategy-schedule-entry')),
+    );
+    final widePlanner = tester.getRect(
+      find.byKey(const Key('payoff-planner-entry')),
+    );
+    expect(wideProgress.left, greaterThan(widePayment.right));
+    expect(wideProgress.top, widePayment.top);
+    expect(widePlanner.left, greaterThan(wideSchedule.right));
+    expect(widePlanner.top, wideSchedule.top);
     expect(tester.takeException(), isNull);
   });
 
