@@ -97,7 +97,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
     final addon = await showModalBottomSheet<ExtraPayment>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: kSurface,
       builder: (_) => _PlanAddonEditor(
         existing: existing,
         defaultStart: _strategyStartDate,
@@ -173,7 +173,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: kPagePadding, vertical: 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -181,7 +181,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                 'One shared monthly budget, aimed at the right loan. When a loan is paid off, its payment rolls into the next one.',
                 style: TextStyle(
                   fontSize: 13,
-                  fontWeight: FontWeight.w300,
+                  fontWeight: FontWeight.w400,
                   color: kSubtle,
                   height: 1.5,
                 ),
@@ -210,7 +210,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                 ),
                 style: const TextStyle(
                   fontSize: 22,
-                  fontWeight: FontWeight.w300,
+                  fontWeight: FontWeight.w400,
                   color: kInk,
                 ),
               ),
@@ -241,7 +241,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                   'Add an annual installment, bonus, or periodic payment.',
                   style: TextStyle(
                     fontSize: 12,
-                    fontWeight: FontWeight.w300,
+                    fontWeight: FontWeight.w400,
                     color: kSubtle,
                   ),
                 )
@@ -275,7 +275,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                                   _addonDescription(addon, money),
                                   style: const TextStyle(
                                     fontSize: 11,
-                                    fontWeight: FontWeight.w300,
+                                    fontWeight: FontWeight.w400,
                                     color: kSubtle,
                                   ),
                                 ),
@@ -321,7 +321,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF7F9F7),
+                      color: kSoft,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Row(
@@ -366,7 +366,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                       : '${altMethod.label} would save ${money.format(-methodDelta)} more.',
                   style: TextStyle(
                     fontSize: 12,
-                    fontWeight: FontWeight.w300,
+                    fontWeight: FontWeight.w400,
                     color: methodDelta >= 0 ? kAccent : const Color(0xFFB3402E),
                   ),
                 ),
@@ -462,7 +462,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                     'No loan pays off within 50 years at this budget.',
                     style: TextStyle(
                       fontSize: 13,
-                      fontWeight: FontWeight.w300,
+                      fontWeight: FontWeight.w400,
                       color: Color(0xFFB3402E),
                     ),
                   ),
@@ -479,7 +479,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                   'Some loans never pay off with this budget — increase it or raise their scheduled payments.',
                   style: TextStyle(
                     fontSize: 12,
-                    fontWeight: FontWeight.w300,
+                    fontWeight: FontWeight.w400,
                     color: Color(0xFFB3402E),
                     height: 1.5,
                   ),
@@ -525,7 +525,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                     method.label,
                     style: TextStyle(
                       fontSize: 15,
-                      fontWeight: selected ? FontWeight.w400 : FontWeight.w300,
+                      fontWeight: selected ? FontWeight.w500 : FontWeight.w400,
                       color: selected ? kInk : kSubtle,
                     ),
                   ),
@@ -534,7 +534,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                     method.description,
                     style: const TextStyle(
                       fontSize: 12,
-                      fontWeight: FontWeight.w300,
+                      fontWeight: FontWeight.w400,
                       color: kSubtle,
                     ),
                   ),
@@ -558,7 +558,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
               '${r.payoffOrder}',
               style: const TextStyle(
                 fontSize: 18,
-                fontWeight: FontWeight.w200,
+                fontWeight: FontWeight.w500,
                 color: kAccent,
               ),
             ),
@@ -579,7 +579,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
             '${DateFormat('MMM yyyy').format(r.payoffDate)} · ${PayoffPlanner.monthsLabel(r.monthsToPayoff)}',
             style: const TextStyle(
               fontSize: 12,
-              fontWeight: FontWeight.w300,
+              fontWeight: FontWeight.w400,
               color: kSubtle,
             ),
           ),
@@ -609,7 +609,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
               label,
               style: const TextStyle(
                 fontSize: 14,
-                fontWeight: FontWeight.w300,
+                fontWeight: FontWeight.w400,
                 color: kSubtle,
               ),
             ),
@@ -722,7 +722,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
             '${money.format(monthlyCommitment)} toward debt · ${money.format(remaining)} remaining',
             style: const TextStyle(
               fontSize: 12,
-              fontWeight: FontWeight.w300,
+              fontWeight: FontWeight.w400,
               color: kSubtle,
             ),
           ),
@@ -731,7 +731,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
             'Based on gross monthly salary and the average monthly value of recurring add-ons. 36% or less is a common healthy guide.',
             style: TextStyle(
               fontSize: 10,
-              fontWeight: FontWeight.w300,
+              fontWeight: FontWeight.w400,
               color: kSubtle,
               height: 1.4,
             ),
@@ -751,7 +751,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
             label,
             style: const TextStyle(
               fontSize: 14,
-              fontWeight: FontWeight.w300,
+              fontWeight: FontWeight.w400,
               color: kSubtle,
             ),
           ),

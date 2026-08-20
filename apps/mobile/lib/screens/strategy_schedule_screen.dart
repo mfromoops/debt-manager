@@ -19,14 +19,14 @@ class StrategyScheduleScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Strategy schedule')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(32, 12, 32, 40),
+        padding: const EdgeInsets.fromLTRB(kPagePadding, 12, kPagePadding, 40),
         children: [
           const Text(
             'Plan time away from extra payments without changing your debt minimums. Your projections update as soon as a window is scheduled.',
             style: TextStyle(
               color: kSubtle,
               fontSize: 14,
-              fontWeight: FontWeight.w300,
+              fontWeight: FontWeight.w400,
               height: 1.5,
             ),
           ),
@@ -63,7 +63,7 @@ class StrategyScheduleScreen extends StatelessWidget {
                     'No pauses or reductions scheduled',
                     style: TextStyle(
                       color: kSubtle,
-                      fontWeight: FontWeight.w300,
+                      fontWeight: FontWeight.w400,
                     ),
                   ),
                 ],
@@ -77,7 +77,7 @@ class StrategyScheduleScreen extends StatelessWidget {
             style: TextStyle(
               color: kSubtle,
               fontSize: 12,
-              fontWeight: FontWeight.w300,
+              fontWeight: FontWeight.w400,
               height: 1.45,
             ),
           ),
@@ -91,7 +91,7 @@ class StrategyScheduleScreen extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      backgroundColor: Colors.white,
+      backgroundColor: kSurface,
       builder: (_) => const _ScheduleOverrideSheet(),
     );
   }
@@ -168,7 +168,7 @@ class _ScheduleCard extends StatelessWidget {
                   style: const TextStyle(
                     color: kSubtle,
                     fontSize: 12,
-                    fontWeight: FontWeight.w300,
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
               ],
@@ -257,7 +257,7 @@ class _ScheduleOverrideSheetState extends State<_ScheduleOverrideSheet> {
           children: [
             const Text(
               'Schedule a strategy change',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w300),
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w400),
             ),
             const SizedBox(height: 20),
             TextField(

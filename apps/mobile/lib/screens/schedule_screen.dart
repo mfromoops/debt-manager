@@ -27,7 +27,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(32, 16, 32, 0),
+          padding: const EdgeInsets.fromLTRB(kPagePadding, 16, kPagePadding, 0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -45,7 +45,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     'Schedule',
                     style: TextStyle(
                       fontSize: 24,
-                      fontWeight: FontWeight.w200,
+                      fontWeight: FontWeight.w500,
                       color: kInk,
                       letterSpacing: 0.5,
                     ),
@@ -68,14 +68,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         ),
         const SizedBox(height: 4),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
+          padding: const EdgeInsets.symmetric(horizontal: kPagePadding),
           child: Text(
             comparison.accelerated.neverPaysOff
                 ? '${widget.loan.name} · balance not decreasing'
                 : '${widget.loan.name} · payoff ${DateFormat('MMMM yyyy').format(comparison.accelerated.payoffDate)} · ${schedule.length} payments',
             style: const TextStyle(
               fontSize: 13,
-              fontWeight: FontWeight.w300,
+              fontWeight: FontWeight.w400,
               color: kSubtle,
             ),
           ),
@@ -83,7 +83,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         const SizedBox(height: 20),
         // Header row
         const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 32, vertical: 8),
+          padding: EdgeInsets.symmetric(horizontal: kPagePadding, vertical: 8),
           child: Row(
             children: [
               Expanded(
@@ -135,7 +135,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             label,
             style: TextStyle(
               fontSize: 13,
-              fontWeight: selected ? FontWeight.w500 : FontWeight.w300,
+              fontWeight: selected ? FontWeight.w500 : FontWeight.w400,
               color: selected ? kAccent : kSubtle,
             ),
           ),
@@ -207,7 +207,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     bool extraHighlight = false,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 13),
+      padding: const EdgeInsets.symmetric(horizontal: kPagePadding, vertical: 13),
       child: Row(
         children: [
           Expanded(
@@ -228,7 +228,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               textAlign: TextAlign.right,
               style: const TextStyle(
                 fontSize: 13,
-                fontWeight: FontWeight.w300,
+                fontWeight: FontWeight.w400,
                 color: kSubtle,
               ),
             ),
@@ -241,7 +241,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight:
-                    extraHighlight ? FontWeight.w400 : FontWeight.w300,
+                    extraHighlight ? FontWeight.w500 : FontWeight.w400,
                 color: extraHighlight ? kAccent : kSubtle,
               ),
             ),

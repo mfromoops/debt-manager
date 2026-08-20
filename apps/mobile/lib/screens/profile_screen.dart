@@ -66,7 +66,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       appBar: AppBar(title: const Text('Profile')),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
+          padding: const EdgeInsets.symmetric(horizontal: kPagePadding, vertical: 20),
           child: Form(
             key: _formKey,
             child: Column(
@@ -86,7 +86,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   'Add your gross salary to see how debt payments fit into your monthly income.',
                   style: TextStyle(
                     fontSize: 13,
-                    fontWeight: FontWeight.w300,
+                    fontWeight: FontWeight.w400,
                     color: kSubtle,
                     height: 1.5,
                   ),
@@ -147,7 +147,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF3F7F4),
+                      color: kSoft,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Column(

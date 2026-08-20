@@ -718,7 +718,7 @@ void main() {
     expect(narrowProgress.top, greaterThan(narrowPayment.bottom));
     expect(narrowPlanner.top, greaterThan(narrowSchedule.bottom));
 
-    tester.view.physicalSize = const Size(800, 900);
+    tester.view.physicalSize = const Size(1100, 900);
     await tester.pump();
 
     final widePayment = tester.getRect(
@@ -726,6 +726,9 @@ void main() {
     );
     final wideProgress = tester.getRect(
       find.byKey(const Key('debt-progress-card')),
+    );
+    final wideIncome = tester.getRect(
+      find.byKey(const Key('income-freedom-card')),
     );
     final wideSchedule = tester.getRect(
       find.byKey(const Key('strategy-schedule-entry')),
@@ -735,6 +738,8 @@ void main() {
     );
     expect(wideProgress.left, greaterThan(widePayment.right));
     expect(wideProgress.top, widePayment.top);
+    expect(wideIncome.left, greaterThan(wideProgress.right));
+    expect(wideIncome.top, widePayment.top);
     expect(widePlanner.left, greaterThan(wideSchedule.right));
     expect(widePlanner.top, wideSchedule.top);
     expect(tester.takeException(), isNull);

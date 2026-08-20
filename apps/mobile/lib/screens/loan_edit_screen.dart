@@ -166,15 +166,15 @@ class _LoanEditScreenState extends State<LoanEditScreen> {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: kSurface,
         surfaceTintColor: Colors.transparent,
         title: const Text(
           'Delete loan?',
-          style: TextStyle(fontWeight: FontWeight.w300),
+          style: TextStyle(fontWeight: FontWeight.w400),
         ),
         content: Text(
           '“${loan.name}” and its strategies will be removed.',
-          style: const TextStyle(fontWeight: FontWeight.w300),
+          style: const TextStyle(fontWeight: FontWeight.w400),
         ),
         actions: [
           TextButton(
@@ -220,7 +220,7 @@ class _LoanEditScreenState extends State<LoanEditScreen> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: kPagePadding, vertical: 16),
           child: Form(
             key: _formKey,
             child: Column(
@@ -243,7 +243,7 @@ class _LoanEditScreenState extends State<LoanEditScreen> {
                     final selected = _type == t;
                     return InkWell(
                       onTap: () => _onTypeChanged(t),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(8),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 14,
@@ -253,7 +253,7 @@ class _LoanEditScreenState extends State<LoanEditScreen> {
                           border: Border.all(
                             color: selected ? kAccent : kHairline,
                           ),
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(8),
                           color: selected
                               ? kAccent.withValues(alpha: 0.06)
                               : Colors.white,
@@ -264,7 +264,7 @@ class _LoanEditScreenState extends State<LoanEditScreen> {
                             fontSize: 13,
                             fontWeight: selected
                                 ? FontWeight.w400
-                                : FontWeight.w300,
+                                : FontWeight.w400,
                             color: selected ? kAccent : kSubtle,
                           ),
                         ),
@@ -280,7 +280,7 @@ class _LoanEditScreenState extends State<LoanEditScreen> {
                     hintText: _defaultName(),
                     hintStyle: const TextStyle(
                       color: kHairline,
-                      fontWeight: FontWeight.w300,
+                      fontWeight: FontWeight.w400,
                     ),
                   ),
                   style: const TextStyle(fontSize: 16, color: kInk),
@@ -346,7 +346,7 @@ class _LoanEditScreenState extends State<LoanEditScreen> {
                       helperStyle: TextStyle(
                         color: kSubtle,
                         fontSize: 11,
-                        fontWeight: FontWeight.w300,
+                        fontWeight: FontWeight.w400,
                       ),
                     ),
                     style: const TextStyle(fontSize: 16, color: kInk),
@@ -392,7 +392,7 @@ class _LoanEditScreenState extends State<LoanEditScreen> {
                           isFixed ? 'Tracking from' : 'First payment',
                           style: const TextStyle(
                             color: kSubtle,
-                            fontWeight: FontWeight.w300,
+                            fontWeight: FontWeight.w400,
                             fontSize: 15,
                           ),
                         ),

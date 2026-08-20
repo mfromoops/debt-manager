@@ -135,7 +135,7 @@ class _StrategyEditScreenState extends State<StrategyEditScreen> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: kPagePadding, vertical: 16),
           child: Form(
             key: _formKey,
             child: Column(
@@ -147,7 +147,7 @@ class _StrategyEditScreenState extends State<StrategyEditScreen> {
                     labelText: 'Name (optional)',
                     hintText: 'e.g. Year-end bonus',
                     hintStyle: TextStyle(
-                        color: kHairline, fontWeight: FontWeight.w300),
+                        color: kHairline, fontWeight: FontWeight.w400),
                   ),
                   style: const TextStyle(fontSize: 16, color: kInk),
                 ),
@@ -190,7 +190,7 @@ class _StrategyEditScreenState extends State<StrategyEditScreen> {
                         'Every',
                         style: TextStyle(
                           fontSize: 15,
-                          fontWeight: FontWeight.w300,
+                          fontWeight: FontWeight.w400,
                           color: kSubtle,
                         ),
                       ),
@@ -223,7 +223,7 @@ class _StrategyEditScreenState extends State<StrategyEditScreen> {
                             : 'months',
                         style: const TextStyle(
                           fontSize: 15,
-                          fontWeight: FontWeight.w300,
+                          fontWeight: FontWeight.w400,
                           color: kSubtle,
                         ),
                       ),
@@ -299,7 +299,7 @@ class _StrategyEditScreenState extends State<StrategyEditScreen> {
               type.label,
               style: TextStyle(
                 fontSize: 15,
-                fontWeight: selected ? FontWeight.w400 : FontWeight.w300,
+                fontWeight: selected ? FontWeight.w500 : FontWeight.w400,
                 color: selected ? kInk : kSubtle,
               ),
             ),
@@ -309,7 +309,7 @@ class _StrategyEditScreenState extends State<StrategyEditScreen> {
                 'e.g. every 8 weeks',
                 style: TextStyle(
                   fontSize: 11,
-                  fontWeight: FontWeight.w300,
+                  fontWeight: FontWeight.w400,
                   color: kHairline,
                 ),
               ),
@@ -335,7 +335,7 @@ class _StrategyEditScreenState extends State<StrategyEditScreen> {
               label,
               style: const TextStyle(
                 color: kSubtle,
-                fontWeight: FontWeight.w300,
+                fontWeight: FontWeight.w400,
                 fontSize: 15,
               ),
             ),
@@ -349,14 +349,14 @@ class _StrategyEditScreenState extends State<StrategyEditScreen> {
   Future<void> _pickAnnualMonth() async {
     final picked = await showModalBottomSheet<int>(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: kSurface,
       builder: (ctx) => ListView.separated(
         itemCount: 12,
         separatorBuilder: (_, _) => const Divider(),
         itemBuilder: (ctx, i) => ListTile(
           title: Text(
             _months[i],
-            style: const TextStyle(fontWeight: FontWeight.w300),
+            style: const TextStyle(fontWeight: FontWeight.w400),
           ),
           onTap: () => Navigator.of(ctx).pop(i + 1),
         ),

@@ -44,7 +44,8 @@ class LoansOverviewScreen extends StatelessWidget {
         ? null
         : state.nextPaymentDate(upcomingLoan);
     final viewportWidth = MediaQuery.sizeOf(context).width;
-    final useWideOverview = viewportWidth >= 720;
+    final useWideOverview = viewportWidth >= 1000;
+    final useWideActions = viewportWidth >= 720;
     final pagePadding = viewportWidth >= 1100
         ? 32.0
         : viewportWidth >= 600
@@ -196,14 +197,17 @@ class LoansOverviewScreen extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Expanded(
-                                  child: _PaymentOverview(
-                                    minimumDue: state.minimumDue,
-                                    strategyPayment:
-                                        state.paymentWithStrategies,
-                                    strategyExtra: state.strategyExtra,
-                                    upcomingLoan: upcomingLoan,
-                                    upcomingDate: upcomingDate,
-                                    monthlyIncome: state.monthlyIncome,
+                                  child: SizedBox(
+                                    height: 360,
+                                    child: _PaymentOverview(
+                                      minimumDue: state.minimumDue,
+                                      strategyPayment:
+                                          state.paymentWithStrategies,
+                                      strategyExtra: state.strategyExtra,
+                                      upcomingLoan: upcomingLoan,
+                                      upcomingDate: upcomingDate,
+                                      monthlyIncome: state.monthlyIncome,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: 14),
@@ -213,9 +217,20 @@ class LoansOverviewScreen extends StatelessWidget {
                                     interestSaved: state.totalInterestSaved,
                                     projectedBalances:
                                         state.projectedDebtBalances(),
-                                    height: state.strategyExtra > 0.005
-                                        ? 360
-                                        : 300,
+                                    height: 360,
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: SizedBox(
+                                    height: 360,
+                                    child: _IncomeFreedomCard(
+                                      monthlyIncome: state.monthlyIncome,
+                                      minimumDue: state.minimumDue,
+                                      releases:
+                                          state.strategyPaymentReleases(),
+                                      compact: true,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -239,14 +254,16 @@ class LoansOverviewScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    _IncomeFreedomCard(
-                      monthlyIncome: state.monthlyIncome,
-                      minimumDue: state.minimumDue,
-                      releases: state.strategyPaymentReleases(),
-                    ),
+                    if (!useWideOverview) ...[
+                      const SizedBox(height: 20),
+                      _IncomeFreedomCard(
+                        monthlyIncome: state.monthlyIncome,
+                        minimumDue: state.minimumDue,
+                        releases: state.strategyPaymentReleases(),
+                      ),
+                    ],
                     const SizedBox(height: 16),
-                    if (useWideOverview)
+                    if (useWideActions)
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -364,7 +381,7 @@ class LoansOverviewScreen extends StatelessWidget {
     final auth = context.watch<AuthService>();
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+      padding: const EdgeInsets.symmetric(horizontal: kPagePadding, vertical: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -377,7 +394,7 @@ class LoansOverviewScreen extends StatelessWidget {
             'Debts',
             style: TextStyle(
               fontSize: 34,
-              fontWeight: FontWeight.w200,
+              fontWeight: FontWeight.w500,
               color: kInk,
               letterSpacing: 0.5,
             ),
@@ -387,7 +404,7 @@ class LoansOverviewScreen extends StatelessWidget {
             'Track mortgages, credit cards and loans.\nSimulate strategies to pay them off sooner.',
             style: TextStyle(
               fontSize: 14,
-              fontWeight: FontWeight.w300,
+              fontWeight: FontWeight.w400,
               color: kSubtle,
               height: 1.5,
             ),
@@ -563,7 +580,7 @@ class _OverviewEntry extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 11,
                         height: 1.35,
-                        fontWeight: FontWeight.w300,
+                        fontWeight: FontWeight.w400,
                         color: kSubtle,
                       ),
                     ),
@@ -584,11 +601,13 @@ class _IncomeFreedomCard extends StatelessWidget {
   final double? monthlyIncome;
   final double minimumDue;
   final List<IncomeRelease> releases;
+  final bool compact;
 
   const _IncomeFreedomCard({
     required this.monthlyIncome,
     required this.minimumDue,
     required this.releases,
+    this.compact = false,
   });
 
   @override
@@ -656,7 +675,7 @@ class _IncomeFreedomCard extends StatelessWidget {
                 'Strategy-adjusted release timeline',
                 style: TextStyle(
                   fontSize: 11,
-                  fontWeight: FontWeight.w300,
+                  fontWeight: FontWeight.w400,
                   color: kSubtle,
                 ),
               ),
@@ -708,7 +727,7 @@ class _IncomeFreedomCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 18),
+                SizedBox(height: compact ? 14 : 18),
                 if (releases.isEmpty)
                   const Text(
                     'No minimum-payment release can be projected yet. Check any payment that does not cover its monthly interest.',
@@ -720,7 +739,7 @@ class _IncomeFreedomCard extends StatelessWidget {
                         '${releases.length} strategy-adjusted payment release dates',
                     child: SizedBox(
                       key: const Key('income-freedom-chart'),
-                      height: 96,
+                      height: compact ? 76 : 96,
                       width: double.infinity,
                       child: CustomPaint(
                         painter: _IncomeFreedomPainter(
@@ -730,9 +749,9 @@ class _IncomeFreedomCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  SizedBox(height: compact ? 8 : 14),
                   ...releases
-                      .take(2)
+                      .take(compact ? 1 : 2)
                       .map(
                         (release) => Padding(
                           padding: const EdgeInsets.only(top: 7),
@@ -757,7 +776,7 @@ class _IncomeFreedomCard extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
                                     fontSize: 11,
-                                    fontWeight: FontWeight.w300,
+                                    fontWeight: FontWeight.w400,
                                     color: kSubtle,
                                   ),
                                 ),
@@ -775,11 +794,11 @@ class _IncomeFreedomCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                  if (releases.length > 2)
+                  if (releases.length > (compact ? 1 : 2))
                     Padding(
                       padding: const EdgeInsets.only(top: 9),
                       child: Text(
-                        '+ ${releases.length - 2} more milestone${releases.length == 3 ? '' : 's'} shown in the timeline',
+                        '+ ${releases.length - (compact ? 1 : 2)} more milestone${releases.length - (compact ? 1 : 2) == 1 ? '' : 's'} shown in the timeline',
                         style: const TextStyle(fontSize: 10, color: kSubtle),
                       ),
                     ),
@@ -829,7 +848,7 @@ class _IncomeFreedomValue extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(
           fontSize: 24,
-          fontWeight: FontWeight.w300,
+          fontWeight: FontWeight.w400,
           color: kInk,
           letterSpacing: -0.3,
         ),
@@ -1033,7 +1052,7 @@ class _DebtProgressCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontSize: 36,
-                            fontWeight: FontWeight.w200,
+                            fontWeight: FontWeight.w500,
                             color: Colors.white,
                             letterSpacing: -0.5,
                           ),
@@ -1046,7 +1065,7 @@ class _DebtProgressCard extends StatelessWidget {
                           'remaining',
                           style: TextStyle(
                             fontSize: 11,
-                            fontWeight: FontWeight.w300,
+                            fontWeight: FontWeight.w400,
                             color: Color(0xFFB4C0B9),
                           ),
                         ),
@@ -1325,7 +1344,7 @@ class _PaymentOverview extends StatelessWidget {
                 : '${money.format(minimumDue)} minimum due · no extra strategy payments this cycle',
             style: const TextStyle(
               fontSize: 12,
-              fontWeight: FontWeight.w300,
+              fontWeight: FontWeight.w400,
               color: Color(0xFFB4C0B9),
               height: 1.4,
             ),
@@ -1492,7 +1511,7 @@ class _PaymentFact extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: 11,
-              fontWeight: FontWeight.w300,
+              fontWeight: FontWeight.w400,
               color: inverse ? const Color(0xFFB4C0B9) : kSubtle,
             ),
           ),
@@ -1532,7 +1551,7 @@ class _LoanRow extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: kSurface,
           border: Border.all(color: kHairline),
           borderRadius: BorderRadius.circular(10),
         ),
@@ -1546,7 +1565,7 @@ class _LoanRow extends StatelessWidget {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF3F7F4),
+                    color: kSoft,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(icon, size: 19, color: kAccent),
@@ -1573,7 +1592,7 @@ class _LoanRow extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontSize: 11,
-                          fontWeight: FontWeight.w300,
+                          fontWeight: FontWeight.w400,
                           color: kSubtle,
                         ),
                       ),
@@ -1596,7 +1615,7 @@ class _LoanRow extends StatelessWidget {
                       'balance',
                       style: TextStyle(
                         fontSize: 10,
-                        fontWeight: FontWeight.w300,
+                        fontWeight: FontWeight.w400,
                         color: kSubtle,
                       ),
                     ),
@@ -1621,7 +1640,7 @@ class _LoanRow extends StatelessWidget {
                   '${pct.toStringAsFixed(0)}% paid',
                   style: const TextStyle(
                     fontSize: 10,
-                    fontWeight: FontWeight.w300,
+                    fontWeight: FontWeight.w400,
                     color: kSubtle,
                   ),
                 ),

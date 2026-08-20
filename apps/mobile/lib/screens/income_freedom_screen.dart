@@ -53,7 +53,7 @@ class _MissingIncome extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.fromLTRB(32, 16, 32, 40),
+    padding: const EdgeInsets.fromLTRB(kPagePadding, 16, kPagePadding, 40),
     children: [
       const Icon(Icons.trending_up, size: 42, color: kAccent),
       const SizedBox(height: 18),
@@ -61,7 +61,7 @@ class _MissingIncome extends StatelessWidget {
         'See when your income opens up',
         style: TextStyle(
           fontSize: 24,
-          fontWeight: FontWeight.w300,
+          fontWeight: FontWeight.w400,
           color: kInk,
         ),
       ),
@@ -71,7 +71,7 @@ class _MissingIncome extends StatelessWidget {
         style: TextStyle(
           fontSize: 14,
           height: 1.5,
-          fontWeight: FontWeight.w300,
+          fontWeight: FontWeight.w400,
           color: kSubtle,
         ),
       ),
@@ -123,7 +123,7 @@ class _Timeline extends StatelessWidget {
 
     return ListView(
       key: const Key('income-freedom-timeline'),
-      padding: const EdgeInsets.fromLTRB(32, 12, 32, 40),
+      padding: const EdgeInsets.fromLTRB(kPagePadding, 12, kPagePadding, 40),
       children: [
         Text(
           switch (mode) {
@@ -134,7 +134,7 @@ class _Timeline extends StatelessWidget {
           style: TextStyle(
             fontSize: 14,
             height: 1.5,
-            fontWeight: FontWeight.w300,
+            fontWeight: FontWeight.w400,
             color: kSubtle,
           ),
         ),
@@ -151,7 +151,7 @@ class _Timeline extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             height: 1.45,
-            fontWeight: FontWeight.w300,
+            fontWeight: FontWeight.w400,
             color: kSubtle,
           ),
         ),
@@ -165,9 +165,9 @@ class _Timeline extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: const Color(0xFFFFFCF4),
+            color: kSurface,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFEDE4CE)),
+            border: Border.all(color: kBorder),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -362,13 +362,13 @@ class _ModeButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => InkWell(
     onTap: onTap,
-    borderRadius: BorderRadius.circular(4),
+    borderRadius: BorderRadius.circular(8),
     child: AnimatedContainer(
       duration: const Duration(milliseconds: 160),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       decoration: BoxDecoration(
         color: selected ? Colors.white : Colors.transparent,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
         boxShadow: selected
             ? const [
                 BoxShadow(
@@ -384,7 +384,7 @@ class _ModeButton extends StatelessWidget {
         textAlign: TextAlign.center,
         style: TextStyle(
           fontSize: 11,
-          fontWeight: selected ? FontWeight.w500 : FontWeight.w300,
+          fontWeight: selected ? FontWeight.w500 : FontWeight.w400,
           color: onTap == null
               ? kSubtle.withValues(alpha: 0.65)
               : selected
@@ -458,7 +458,7 @@ class _StrategyComparison extends StatelessWidget {
           style: TextStyle(
             fontSize: 11,
             height: 1.45,
-            fontWeight: FontWeight.w300,
+            fontWeight: FontWeight.w400,
             color: kSubtle,
           ),
         ),
@@ -613,7 +613,7 @@ class _SummaryValue extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(
           fontSize: 25,
-          fontWeight: FontWeight.w300,
+          fontWeight: FontWeight.w400,
           color: kInk,
           letterSpacing: -0.3,
         ),

@@ -22,7 +22,7 @@ class StrategiesScreen extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(32, 16, 16, 0),
+          padding: const EdgeInsets.fromLTRB(kPagePadding, 16, 16, 0),
           child: Row(
             children: [
               IconButton(
@@ -37,7 +37,7 @@ class StrategiesScreen extends StatelessWidget {
                   'Strategies',
                   style: TextStyle(
                     fontSize: 24,
-                    fontWeight: FontWeight.w200,
+                    fontWeight: FontWeight.w500,
                     color: kInk,
                     letterSpacing: 0.5,
                   ),
@@ -57,14 +57,14 @@ class StrategiesScreen extends StatelessWidget {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(32, 4, 32, 0),
+          padding: const EdgeInsets.fromLTRB(kPagePadding, 4, kPagePadding, 0),
           child: Text(
             loan.extras.isEmpty
                 ? '${loan.name} · add extra payments to pay off sooner.'
                 : '${loan.name} · saving ${money.format(comparison.interestSaved)} · ${comparison.timeSavedLabel} sooner',
             style: TextStyle(
               fontSize: 13,
-              fontWeight: FontWeight.w300,
+              fontWeight: FontWeight.w400,
               color: loan.extras.isEmpty ? kSubtle : kAccent,
             ),
           ),
@@ -99,7 +99,7 @@ class StrategiesScreen extends StatelessWidget {
             'No strategies yet',
             style: TextStyle(
               fontSize: 15,
-              fontWeight: FontWeight.w300,
+              fontWeight: FontWeight.w400,
               color: kSubtle,
             ),
           ),
@@ -109,7 +109,7 @@ class StrategiesScreen extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 12,
-              fontWeight: FontWeight.w300,
+              fontWeight: FontWeight.w400,
               color: kSubtle,
               height: 1.5,
             ),
@@ -159,7 +159,7 @@ class _StrategyRow extends StatelessWidget {
         );
       },
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: kPagePadding, vertical: 14),
         child: Row(
           children: [
             Expanded(
@@ -179,7 +179,7 @@ class _StrategyRow extends StatelessWidget {
                     '${extra.cadenceDescription()} · ${money.format(extra.amount)}',
                     style: const TextStyle(
                       fontSize: 12,
-                      fontWeight: FontWeight.w300,
+                      fontWeight: FontWeight.w400,
                       color: kSubtle,
                     ),
                   ),

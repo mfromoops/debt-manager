@@ -19,7 +19,7 @@ class SignInScreen extends StatelessWidget {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
             child: Padding(
-              padding: const EdgeInsets.all(32),
+              padding: const EdgeInsets.all(kPagePadding),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -109,7 +109,7 @@ class SignInScreen extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 12,
-                      fontWeight: FontWeight.w300,
+                      fontWeight: FontWeight.w400,
                       color: Color(0xFFB4C0B9),
                       height: 1.4,
                     ),
@@ -125,7 +125,7 @@ class SignInScreen extends StatelessWidget {
                       style: const TextStyle(
                         color: Color(0xFFB3402E),
                         fontSize: 13,
-                        fontWeight: FontWeight.w300,
+                        fontWeight: FontWeight.w400,
                         height: 1.4,
                       ),
                     ),
@@ -150,7 +150,7 @@ class _SetupNotice extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         border: Border.all(color: const Color(0xFFE8C4BC)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -169,7 +169,7 @@ class _SetupNotice extends StatelessWidget {
             style: TextStyle(
               color: Color(0xFFB3402E),
               fontSize: 12,
-              fontWeight: FontWeight.w300,
+              fontWeight: FontWeight.w400,
               height: 1.45,
             ),
           ),

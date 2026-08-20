@@ -19,6 +19,9 @@ const kSubtle = Color(0xFF6F7973);
 const kSoft = Color(0xFFF3F7F4);
 const kBorder = Color(0xFFDCE8E0);
 const kHairline = Color(0xFFE8ECE9);
+const kPagePadding = 24.0;
+const kSectionGap = 32.0;
+const kCardRadius = 12.0;
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -94,6 +97,8 @@ class DebtManagerApp extends StatelessWidget {
           elevation: 0,
           scrolledUnderElevation: 0,
           centerTitle: false,
+          toolbarHeight: 64,
+          titleSpacing: kPagePadding,
           titleTextStyle: TextStyle(
             color: kInk,
             fontSize: 22,
@@ -155,17 +160,56 @@ class DebtManagerApp extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
           ),
         ),
-        inputDecorationTheme: const InputDecorationTheme(
-          border: UnderlineInputBorder(
-            borderSide: BorderSide(color: kHairline),
+        dialogTheme: DialogThemeData(
+          backgroundColor: kSurface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(kCardRadius),
           ),
-          enabledBorder: UnderlineInputBorder(
-            borderSide: BorderSide(color: kHairline),
+        ),
+        bottomSheetTheme: const BottomSheetThemeData(
+          backgroundColor: kSurface,
+          modalBackgroundColor: kSurface,
+          showDragHandle: true,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
           ),
-          focusedBorder: UnderlineInputBorder(
-            borderSide: BorderSide(color: kAccent, width: 1.5),
+        ),
+        snackBarTheme: SnackBarThemeData(
+          backgroundColor: kInk,
+          contentTextStyle: const TextStyle(color: Colors.white),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
           ),
-          labelStyle: TextStyle(color: kSubtle, fontWeight: FontWeight.w300),
+        ),
+        listTileTheme: const ListTileThemeData(
+          iconColor: kAccent,
+          textColor: kInk,
+          contentPadding: EdgeInsets.symmetric(horizontal: kPagePadding),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: kSurface,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 14,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: kBorder),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: kBorder),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: kAccent, width: 1.5),
+          ),
+          labelStyle: const TextStyle(
+            color: kSubtle,
+            fontWeight: FontWeight.w400,
+          ),
         ),
       ),
       home: const HomeShell(),

@@ -35,7 +35,7 @@ class DashboardScreen extends StatelessWidget {
     final hasProgressHistory = loan.progressEntries.isNotEmpty;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
+      padding: const EdgeInsets.symmetric(horizontal: kPagePadding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -55,7 +55,7 @@ class DashboardScreen extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 24,
-                    fontWeight: FontWeight.w200,
+                    fontWeight: FontWeight.w500,
                     color: kInk,
                     letterSpacing: 0.5,
                   ),
@@ -78,7 +78,7 @@ class DashboardScreen extends StatelessWidget {
             '${loan.type.label} · ${loan.annualRate}%',
             style: const TextStyle(
               fontSize: 12,
-              fontWeight: FontWeight.w300,
+              fontWeight: FontWeight.w400,
               color: kSubtle,
             ),
           ),
@@ -87,7 +87,7 @@ class DashboardScreen extends StatelessWidget {
             money.format(currentBalance),
             style: const TextStyle(
               fontSize: 44,
-              fontWeight: FontWeight.w200,
+              fontWeight: FontWeight.w500,
               color: kInk,
               letterSpacing: -0.5,
             ),
@@ -97,7 +97,7 @@ class DashboardScreen extends StatelessWidget {
             '${money.format(paidDown)} paid down of ${money.format(loan.principal)}',
             style: const TextStyle(
               fontSize: 13,
-              fontWeight: FontWeight.w300,
+              fontWeight: FontWeight.w400,
               color: kSubtle,
             ),
           ),
@@ -116,7 +116,7 @@ class DashboardScreen extends StatelessWidget {
             '${paidOffPct.toStringAsFixed(1)}% paid off',
             style: const TextStyle(
               fontSize: 12,
-              fontWeight: FontWeight.w300,
+              fontWeight: FontWeight.w400,
               color: kSubtle,
             ),
           ),
@@ -143,13 +143,13 @@ class DashboardScreen extends StatelessWidget {
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 border: Border.all(color: const Color(0xFFE8C4BC)),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: const Text(
                 'Your payment doesn\'t reduce the balance — it never pays off at this rate. Increase the monthly payment or add strategies.',
                 style: TextStyle(
                   fontSize: 12,
-                  fontWeight: FontWeight.w300,
+                  fontWeight: FontWeight.w400,
                   color: Color(0xFFB3402E),
                   height: 1.5,
                 ),
@@ -293,7 +293,7 @@ class DashboardScreen extends StatelessWidget {
                   ].join(' - '),
                   style: const TextStyle(
                     fontSize: 12,
-                    fontWeight: FontWeight.w300,
+                    fontWeight: FontWeight.w400,
                     color: kSubtle,
                   ),
                 ),
@@ -334,7 +334,7 @@ class DashboardScreen extends StatelessWidget {
               label,
               style: const TextStyle(
                 fontSize: 14,
-                fontWeight: FontWeight.w300,
+                fontWeight: FontWeight.w400,
                 color: kSubtle,
               ),
             ),
@@ -366,7 +366,7 @@ class DashboardScreen extends StatelessWidget {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: kSurface,
       builder: (_) => _ProgressSheet(loan: loan, existing: existing),
     );
   }
@@ -394,7 +394,7 @@ class _DebtPaymentSummary extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F7F4),
+        color: kSoft,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: const Color(0xFFDCE8E0)),
       ),
@@ -448,7 +448,7 @@ class _DebtPaymentSummary extends StatelessWidget {
               '${money.format(strategyPayment - loan.monthlyPayment)} extra is scheduled with your active strategies.',
               style: const TextStyle(
                 fontSize: 11,
-                fontWeight: FontWeight.w300,
+                fontWeight: FontWeight.w400,
                 color: kSubtle,
                 height: 1.4,
               ),
@@ -615,7 +615,7 @@ class _ProgressSheetState extends State<_ProgressSheet> {
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
     return Padding(
-      padding: EdgeInsets.fromLTRB(32, 24, 32, bottom + 24),
+      padding: EdgeInsets.fromLTRB(kPagePadding, 24, kPagePadding, bottom + 24),
       child: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -627,7 +627,7 @@ class _ProgressSheetState extends State<_ProgressSheet> {
                 widget.existing == null ? 'Log progress' : 'Edit progress',
                 style: const TextStyle(
                   fontSize: 24,
-                  fontWeight: FontWeight.w200,
+                  fontWeight: FontWeight.w500,
                   color: kInk,
                 ),
               ),
@@ -646,7 +646,7 @@ class _ProgressSheetState extends State<_ProgressSheet> {
                         'Date',
                         style: TextStyle(
                           color: kSubtle,
-                          fontWeight: FontWeight.w300,
+                          fontWeight: FontWeight.w400,
                           fontSize: 15,
                         ),
                       ),

@@ -43,6 +43,7 @@ class _LoanDetailShellState extends State<LoanDetailShell> {
       body: SafeArea(child: screens[_index]),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
+          color: kSurface,
           border: Border(top: BorderSide(color: kHairline)),
         ),
         child: SafeArea(
@@ -68,6 +69,7 @@ class _LoanDetailShellState extends State<LoanDetailShell> {
     return Expanded(
       child: InkWell(
         onTap: () => setState(() => _index = i),
+        borderRadius: BorderRadius.circular(8),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -82,7 +84,7 @@ class _LoanDetailShellState extends State<LoanDetailShell> {
               style: TextStyle(
                 fontSize: 10,
                 letterSpacing: 0.4,
-                fontWeight: selected ? FontWeight.w500 : FontWeight.w300,
+                fontWeight: selected ? FontWeight.w500 : FontWeight.w400,
                 color: selected ? kAccent : kSubtle,
               ),
             ),
