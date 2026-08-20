@@ -1,7 +1,14 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import ButtonLink from "../components/ButtonLink.astro";
-import { ArrowUpRight } from "@lucide/astro";
+import {
+    ArrowRight,
+    ArrowUpRight,
+    Calculator,
+    CircleCheckBig,
+    GitCompareArrows,
+    ListPlus,
+} from "@lucide/astro";
 
 const container = "container mx-auto px-8";
 const section = "border-t border-hairline py-20 md:py-28";
@@ -50,7 +57,7 @@ const capabilities = [
                     <p class="my-7 max-w-2xl text-lg leading-relaxed text-white/75 md:text-xl">Compare payoff strategies before you commit. DebtFold turns your balances, rates, and budget into a month-by-month path out of debt.</p>
                     <div class="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
                         <ButtonLink class="w-full sm:w-auto" href="#simulator">Run a demo forecast <ArrowUpRight size={16} /></ButtonLink>
-                        <a class="text-sm font-medium text-white/80 transition-colors hover:text-white" href="https://app.debtfold.com">Open DebtFold →</a>
+                        <a class="inline-flex items-center gap-2 text-sm font-medium text-white/80 transition-colors hover:text-white" href="https://app.debtfold.com">Open DebtFold <ArrowRight size={16} /></a>
                     </div>
                     <div class="mt-12 flex flex-wrap gap-x-8 gap-y-3 border-t border-white/15 pt-5 text-xs text-white/55">
                         <span><i class="mr-2 inline-block size-1.5 rounded-full bg-brand-focus"></i>No account required</span>
@@ -169,9 +176,9 @@ const capabilities = [
 
         <section id="how" class={section}>
             <div class={container}>
-                <div class="grid gap-8 md:grid-cols-[1fr_auto] md:items-end"><div><p class={eyebrow}>How it works</p><h2 class={heading}>From scattered balances to one clear plan.</h2></div><a class="text-sm font-medium text-brand" href="/engine">Explore the engine →</a></div>
+                <div class="grid gap-8 md:grid-cols-[1fr_auto] md:items-end"><div><p class={eyebrow}>How it works</p><h2 class={heading}>From scattered balances to one clear plan.</h2></div><a class="inline-flex items-center gap-2 text-sm font-medium text-brand" href="/engine">Explore the engine <ArrowRight size={16} /></a></div>
                 <div class="mt-14 grid border-x border-t border-border bg-white md:grid-cols-4">
-                    {steps.map(([number, title, copy], index) => <article class="border-b border-border p-6 md:min-h-72 md:border-r md:p-7 last:md:border-r-0"><div class="flex items-center justify-between"><span class="text-xs text-brand">{number}</span><span class="grid size-9 place-items-center rounded-full bg-soft text-brand">{index === 0 ? "↓" : index === 1 ? "∑" : index === 2 ? "⇄" : "✓"}</span></div><h3 class="mb-3 mt-16 text-2xl leading-tight font-medium font-display">{title}</h3><p class="m-0 max-w-xs text-sm leading-relaxed text-muted">{copy}</p></article>)}
+                    {steps.map(([number, title, copy], index) => <article class="border-b border-border p-6 md:min-h-72 md:border-r md:p-7 last:md:border-r-0"><div class="flex items-center justify-between"><span class="text-xs text-brand">{number}</span><span class="grid size-9 place-items-center rounded-full bg-soft text-brand">{index === 0 ? <ListPlus size={18} /> : index === 1 ? <Calculator size={18} /> : index === 2 ? <GitCompareArrows size={18} /> : <CircleCheckBig size={18} />}</span></div><h3 class="mb-3 mt-16 text-2xl leading-tight font-medium font-display">{title}</h3><p class="m-0 max-w-xs text-sm leading-relaxed text-muted">{copy}</p></article>)}
                 </div>
             </div>
         </section>
@@ -189,7 +196,7 @@ const capabilities = [
             <div class={container}>
                 <div class="grid gap-10 md:grid-cols-2 md:gap-20">
                     <div><p class:list={[eyebrow, "text-brand-focus"]}>For financial institutions</p><h2 class={heading}>Give people a clearer way to move forward.</h2></div>
-                    <div><p class="max-w-lg text-lg leading-relaxed text-inverse-muted">License the deterministic simulation engine for your bank, credit union, fintech, or financial-wellness product.</p><div class="mt-7 flex flex-wrap items-center gap-5"><ButtonLink href="mailto:hello@debtmanager.app">Talk about the engine <ArrowUpRight size={16} /></ButtonLink><a class="text-sm text-white/70" href="/engine">See technical details →</a></div></div>
+                    <div><p class="max-w-lg text-lg leading-relaxed text-inverse-muted">License the deterministic simulation engine for your bank, credit union, fintech, or financial-wellness product.</p><div class="mt-7 flex flex-wrap items-center gap-5"><ButtonLink href="mailto:hello@debtmanager.app">Talk about the engine <ArrowUpRight size={16} /></ButtonLink><a class="inline-flex items-center gap-2 text-sm text-white/70" href="/engine">See technical details <ArrowRight size={16} /></a></div></div>
                 </div>
                 <div class="mt-16 grid border-t border-white/15 text-sm text-white/55 md:grid-cols-3"><div class="border-b border-white/15 py-5 md:border-r">Deterministic outputs</div><div class="border-b border-white/15 py-5 md:border-r md:px-7">Explainable assumptions</div><div class="border-b border-white/15 py-5 md:pl-7">Flexible integration paths</div></div>
             </div>
