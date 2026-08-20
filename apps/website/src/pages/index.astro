@@ -20,7 +20,7 @@ const steps = [
     ["01", "Model", "Enter balances, rates, payments, dates, and cadence."],
     ["02", "Simulate", "Project debt month by month, including interest and extra payments."],
     ["03", "Compare", "See avalanche, snowball, minimum-only, and custom outcomes."],
-    ["04", "Act", "Apply a strategy, track progress, and update the forecast."],
+    ["04", "Act", "Choose a plan, track progress, and update the forecast."],
 ];
 const capabilities = [
     ["Multi-debt projections", "See all balances move together in one month-by-month forecast."],
@@ -56,7 +56,7 @@ const capabilities = [
                     <h1 class="m-0 max-w-3xl text-5xl leading-[1.08] font-medium tracking-tight md:text-7xl font-display">See the move.<br /><span class="text-brand-pale">Then make it.</span></h1>
                     <p class="my-7 max-w-2xl text-lg leading-relaxed text-white/75 md:text-xl">Compare payoff strategies before you commit. DebtFold turns your balances, rates, and budget into a month-by-month path out of debt.</p>
                     <div class="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-                        <ButtonLink class="w-full sm:w-auto" href="#simulator">Run a demo forecast <ArrowUpRight size={16} /></ButtonLink>
+                        <ButtonLink class="w-full sm:w-auto" href="#simulator">Try the simulator <ArrowUpRight size={16} /></ButtonLink>
                         <a class="inline-flex items-center gap-2 text-sm font-medium text-white/80 transition-colors hover:text-white" href="https://app.debtfold.com">Open DebtFold <ArrowRight size={16} /></a>
                     </div>
                     <div class="mt-12 flex flex-wrap gap-x-8 gap-y-3 border-t border-white/15 pt-5 text-xs text-white/55">
@@ -196,7 +196,7 @@ const capabilities = [
             <div class={container}>
                 <div class="grid gap-10 md:grid-cols-2 md:gap-20">
                     <div><p class:list={[eyebrow, "text-brand-focus"]}>For financial institutions</p><h2 class={heading}>Give people a clearer way to move forward.</h2></div>
-                    <div><p class="max-w-lg text-lg leading-relaxed text-inverse-muted">License the deterministic simulation engine for your bank, credit union, fintech, or financial-wellness product.</p><div class="mt-7 flex flex-wrap items-center gap-5"><ButtonLink href="mailto:hello@debtmanager.app">Talk about the engine <ArrowUpRight size={16} /></ButtonLink><a class="inline-flex items-center gap-2 text-sm text-white/70" href="/engine">See technical details <ArrowRight size={16} /></a></div></div>
+                    <div><p class="max-w-lg text-lg leading-relaxed text-inverse-muted">License the deterministic simulation engine for your bank, credit union, fintech, or financial-wellness product.</p><div class="mt-7 flex flex-wrap items-center gap-5"><ButtonLink href="mailto:hello@debtfold.com">Talk about the engine <ArrowUpRight size={16} /></ButtonLink><a class="inline-flex items-center gap-2 text-sm text-white/70" href="/engine">See technical details <ArrowRight size={16} /></a></div></div>
                 </div>
                 <div class="mt-16 grid border-t border-white/15 text-sm text-white/55 md:grid-cols-3"><div class="border-b border-white/15 py-5 md:border-r">Deterministic outputs</div><div class="border-b border-white/15 py-5 md:border-r md:px-7">Explainable assumptions</div><div class="border-b border-white/15 py-5 md:pl-7">Flexible integration paths</div></div>
             </div>
@@ -270,7 +270,7 @@ const capabilities = [
         const extra = Number(budget.value), one = Number((lump.value || "0").replace(/[^0-9]/g, "")), result = simulateDebts(DEMO_DEBTS, extra, strategy, one), label = strategy[0].toUpperCase() + strategy.slice(1);
         out.textContent = `$${extra.toLocaleString()} / month`;
         interest.textContent = result.neverPaysOff ? "Does not pay off" : `$${Math.round(result.interest).toLocaleString()}`;
-        months.textContent = result.neverPaysOff ? "—" : `${result.months} mo.`;
+         months.textContent = result.neverPaysOff ? "Not reached" : `${result.months} mo.`;
         date.textContent = result.neverPaysOff ? "Not reached" : result.payoffDate ? result.payoffDate.toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "Not reached";
         title.textContent = `${label} plan`; first.textContent = result.order[0] || "Credit card";
         explain.textContent = `This example applies $${extra.toLocaleString()}/month above minimum payments using ${label}. ${strategy === "avalanche" ? "The highest-rate balance receives the extra amount first" : "The smallest balance receives the extra amount first"}; when it is paid off, its payment rolls to the next balance.`;
