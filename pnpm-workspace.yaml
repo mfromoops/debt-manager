@@ -1,4 +1,5 @@
 packages:
+  - "apps/website"
   - "services/*"
 
 # Pre-approve build scripts for the packages C3 itself installs that need

@@ -1,0 +1,1 @@
+{"name":"debt-manager-website","version":"0.1.0","private":true,"type":"module","scripts":{"dev":"astro dev","build":"astro build","preview":"astro preview","deploy":"astro build && wrangler deploy"},"dependencies":{"@astrojs/cloudflare":"^12.6.0","astro":"^5.13.0"},"devDependencies":{"typescript":"^5.8.3","wrangler":"^4.29.0"}}

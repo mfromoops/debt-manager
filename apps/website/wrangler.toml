@@ -1,0 +1,6 @@
+name = "debt-manager-website"
+main = "./dist/_worker.js/index.js"
+compatibility_date = "2026-08-20"
+[assets]
+directory = "./dist"
+binding = "ASSETS"
