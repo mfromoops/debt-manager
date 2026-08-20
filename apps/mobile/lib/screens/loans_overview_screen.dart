@@ -1413,7 +1413,7 @@ class _PaymentFact extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 9,
             letterSpacing: 1.2,
             fontWeight: FontWeight.w500,
@@ -1424,7 +1424,7 @@ class _PaymentFact extends StatelessWidget {
         Text(
           value,
           key: valueKey,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w500,
             color: inverse ? Colors.white : kInk,
@@ -1436,7 +1436,7 @@ class _PaymentFact extends StatelessWidget {
             detail!,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w300,
               color: inverse ? const Color(0xFFB4C0B9) : kSubtle,
