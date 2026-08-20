@@ -5,8 +5,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_app/models/loan.dart';
 import 'package:flutter_app/models/extra_payment.dart';
 import 'package:flutter_app/models/progress_entry.dart';
+import 'package:flutter_app/models/financial_profile.dart';
+import 'package:flutter_app/models/strategy_schedule_override.dart';
 import 'package:flutter_app/screens/dashboard_screen.dart';
 import 'package:flutter_app/screens/loans_overview_screen.dart';
+import 'package:flutter_app/screens/planner_screen.dart';
+import 'package:flutter_app/screens/profile_screen.dart';
 import 'package:flutter_app/services/app_state.dart';
 import 'package:flutter_app/services/amortization_engine.dart';
 import 'package:flutter_app/services/auth_service.dart';
@@ -23,6 +27,9 @@ void main() {
     final state = AppState();
     await state.load();
     await state.addLoan(localLoan);
+    await state.saveProfile(
+      const FinancialProfile(salary: 60000, salaryPeriod: SalaryPeriod.annual),
+    );
     final sync = _FakeSyncService(
       remote: SyncDocument(
         loans: [remoteLoan.toJson()],
@@ -45,6 +52,7 @@ void main() {
       sync.pushed!.loans.map((item) => (item as Map<String, dynamic>)['id']),
       containsAll(['local', 'remote']),
     );
+    expect(sync.pushed!.profile?['salary'], 60000);
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getString('loans.syncOwnerId'), 'user-1');
   });
@@ -65,6 +73,7 @@ void main() {
       final sync = _FakeSyncService(
         remote: SyncDocument(
           loans: [newLoan.toJson()],
+          profile: const {'salary': 9000, 'salaryPeriod': 'monthly'},
           updatedAt: DateTime.utc(2026, 8, 1),
           rev: 'new-rev',
         ),
@@ -77,6 +86,7 @@ void main() {
       );
 
       expect(state.loans.map((loan) => loan.id), ['new']);
+      expect(state.monthlyIncome, 9000);
       expect(sync.pushed, isNull);
     },
   );
@@ -91,6 +101,43 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getBool('auth.guestMode'), isTrue);
     auth.dispose();
+  });
+
+  test('annual salary is persisted and normalized to monthly income', () async {
+    SharedPreferences.setMockInitialValues({});
+    final state = AppState();
+    await state.saveProfile(
+      const FinancialProfile(salary: 60000, salaryPeriod: SalaryPeriod.annual),
+    );
+
+    final reloaded = AppState();
+    await reloaded.load();
+
+    expect(reloaded.profile?.salary, 60000);
+    expect(reloaded.profile?.salaryPeriod, SalaryPeriod.annual);
+    expect(reloaded.monthlyIncome, 5000);
+  });
+
+  testWidgets('Profile page saves annual salary and previews monthly income', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final state = AppState();
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppState>.value(
+        value: state,
+        child: const MaterialApp(home: ProfileScreen()),
+      ),
+    );
+
+    await tester.enterText(find.byKey(const Key('profile-salary')), '60000');
+    await tester.tap(find.text('Annual'));
+    await tester.pump();
+
+    expect(find.text(r'$5,000'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('save-profile')));
+    await tester.pump();
+    expect(state.monthlyIncome, 5000);
   });
 
   test('Amortized loan computes standard payoff', () {
@@ -468,6 +515,140 @@ void main() {
     expect(state.minimumDue, closeTo(200, 0.01));
   });
 
+  testWidgets('Payment cycle shows debt share and remaining income', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final state = AppState();
+    await state.addLoan(
+      Loan(
+        id: 'income-cycle',
+        name: 'Income cycle loan',
+        type: LoanType.personalLoan,
+        principal: 5000,
+        annualRate: 0,
+        startDate: DateTime(2026, 1),
+        paymentMode: PaymentMode.fixedPayment,
+        fixedMonthlyPayment: 500,
+        extras: [
+          ExtraPayment(
+            id: 'income-cycle-strategy',
+            name: 'Future acceleration',
+            amount: 100,
+            cadence: CadenceType.monthly,
+            startDate: DateTime(2100, 1),
+          ),
+        ],
+      ),
+    );
+    await state.saveProfile(
+      const FinancialProfile(salary: 5000, salaryPeriod: SalaryPeriod.monthly),
+    );
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AppState>.value(value: state),
+          ChangeNotifierProvider<AuthService>(create: (_) => AuthService()),
+        ],
+        child: const MaterialApp(home: LoansOverviewScreen()),
+      ),
+    );
+
+    expect(find.byKey(const Key('payment-income-ratio')), findsOneWidget);
+    expect(find.textContaining('10.0% of monthly income'), findsOneWidget);
+    expect(find.textContaining(r'$4,500 remaining'), findsOneWidget);
+    expect(find.byKey(const Key('income-freedom-card')), findsOneWidget);
+    expect(find.byKey(const Key('income-freedom-now')), findsOneWidget);
+    expect(find.byKey(const Key('income-freedom-final')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('income-freedom-open')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Income freedom'), findsOneWidget);
+    expect(find.byKey(const Key('income-freedom-timeline')), findsOneWidget);
+    expect(find.byKey(const Key('income-timeline-now')), findsOneWidget);
+    expect(find.byKey(const Key('income-timeline-release-0')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('income-mode-strategy-only')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('income-strategy-timeline-release-0')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key('income-mode-strategies')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('income-strategy-comparison')), findsOneWidget);
+    expect(find.byKey(const Key('income-strategy-row-0')), findsOneWidget);
+    expect(find.text('MINIMUM'), findsOneWidget);
+    expect(find.text('STRATEGY'), findsOneWidget);
+  });
+
+  test('Income releases use minimum payments and ignore strategies', () async {
+    SharedPreferences.setMockInitialValues({});
+    final state = AppState();
+    await state.addLoan(
+      Loan(
+        id: 'release-first',
+        name: 'Short loan',
+        type: LoanType.personalLoan,
+        principal: 1000,
+        annualRate: 0,
+        startDate: DateTime(2026, 9, 15),
+        paymentMode: PaymentMode.fixedPayment,
+        fixedMonthlyPayment: 500,
+        extras: const [
+          ExtraPayment(
+            id: 'ignored-strategy',
+            name: 'Pay it immediately',
+            amount: 1000,
+            cadence: CadenceType.monthly,
+          ),
+        ],
+      ),
+    );
+    await state.addLoan(
+      Loan(
+        id: 'release-second',
+        name: 'Three month loan',
+        type: LoanType.personalLoan,
+        principal: 300,
+        annualRate: 0,
+        startDate: DateTime(2026, 9, 20),
+        paymentMode: PaymentMode.fixedPayment,
+        fixedMonthlyPayment: 100,
+      ),
+    );
+
+    final releases = state.minimumPaymentReleases(asOf: DateTime(2026, 8, 19));
+
+    expect(releases, hasLength(2));
+    expect(releases.first.date, DateTime(2026, 10));
+    expect(releases.first.amount, closeTo(500, 0.01));
+    expect(releases.first.loanNames, ['Short loan']);
+    expect(releases.last.date, DateTime(2026, 11));
+    expect(releases.last.amount, closeTo(100, 0.01));
+
+    final comparisons = state.strategyIncomeReleases(
+      asOf: DateTime(2026, 8, 19),
+    );
+    final accelerated = comparisons.firstWhere(
+      (comparison) => comparison.loanName == 'Short loan',
+    );
+    expect(accelerated.minimumOnlyDate, DateTime(2026, 10));
+    expect(accelerated.strategyDate, DateTime(2026, 9));
+    expect(accelerated.minimumPayment, closeTo(500, 0.01));
+
+    final strategyReleases = state.strategyPaymentReleases(
+      asOf: DateTime(2026, 8, 19),
+    );
+    expect(strategyReleases.first.date, DateTime(2026, 9));
+    expect(strategyReleases.first.amount, closeTo(500, 0.01));
+    expect(strategyReleases.first.loanNames, ['Short loan']);
+  });
+
   testWidgets('Redesigned home fits a narrow phone viewport', (tester) async {
     SharedPreferences.setMockInitialValues({});
     tester.view.physicalSize = const Size(320, 800);
@@ -647,6 +828,174 @@ void main() {
       );
       expect(withBudget.monthsToDebtFree, lessThan(noBudget.monthsToDebtFree));
       expect(withBudget.totalInterest, lessThan(noBudget.totalInterest));
+    });
+
+    test('Annual and periodic add-ons become shared plan cash', () {
+      final loan = Loan(
+        id: 'addon-loan',
+        name: 'Addon loan',
+        type: LoanType.personalLoan,
+        principal: 5000,
+        annualRate: 0,
+        startDate: DateTime(2026, 1),
+        paymentMode: PaymentMode.fixedPayment,
+        fixedMonthlyPayment: 50,
+      );
+      final plan = PayoffPlanner.plan(
+        loans: [loan],
+        startingBalances: {loan.id: loan.principal},
+        method: PlanMethod.snowball,
+        monthlyBudget: 0,
+        planStart: DateTime(2026, 1),
+        addons: [
+          ExtraPayment(
+            id: 'annual',
+            name: 'Annual installment',
+            amount: 500,
+            cadence: CadenceType.annual,
+            annualMonth: 3,
+          ),
+          ExtraPayment(
+            id: 'quarterly',
+            name: 'Quarterly payment',
+            amount: 100,
+            cadence: CadenceType.everyNMonths,
+            interval: 3,
+            startDate: DateTime(2026, 1),
+          ),
+        ],
+      );
+
+      final annualMonths = plan.addonAllocations
+          .where((allocation) => allocation.addonId == 'annual')
+          .map((allocation) => allocation.monthIndex)
+          .toList();
+      final quarterlyMonths = plan.addonAllocations
+          .where((allocation) => allocation.addonId == 'quarterly')
+          .map((allocation) => allocation.monthIndex)
+          .toList();
+
+      expect(annualMonths.take(2), [3, 15]);
+      expect(quarterlyMonths.take(4), [1, 4, 7, 10]);
+      expect(plan.monthsToDebtFree, lessThan(100));
+    });
+
+    test(
+      'Applying a plan persists allocated add-ons as dated payments',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final loan = Loan(
+          id: 'apply-addon',
+          name: 'Apply addon',
+          type: LoanType.personalLoan,
+          principal: 1000,
+          annualRate: 0,
+          startDate: DateTime(2026, 1),
+          paymentMode: PaymentMode.fixedPayment,
+          fixedMonthlyPayment: 100,
+        );
+        final state = AppState();
+        await state.addLoan(loan);
+        final plan = PayoffPlanner.plan(
+          loans: [loan],
+          startingBalances: {loan.id: loan.principal},
+          method: PlanMethod.snowball,
+          monthlyBudget: 0,
+          planStart: DateTime(2026, 1),
+          addons: [
+            ExtraPayment(
+              id: 'bonus',
+              name: 'February bonus',
+              amount: 200,
+              cadence: CadenceType.oneTime,
+              oneTimeDate: DateTime(2026, 2),
+            ),
+          ],
+        );
+
+        final added = await state.applyPayoffPlan(
+          plan,
+          startDate: DateTime(2026, 1),
+        );
+        final savedAddon = state.loanById(loan.id)!.extras.single;
+
+        expect(added, 1);
+        expect(savedAddon.name, 'February bonus');
+        expect(savedAddon.cadence, CadenceType.oneTime);
+        expect(savedAddon.oneTimeDate, DateTime(2026, 2));
+        expect(savedAddon.amount, 200);
+      },
+    );
+
+    testWidgets('Planner can add a custom annual installment', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final state = AppState();
+      await state.addLoan(
+        Loan(
+          id: 'planner-ui',
+          name: 'Planner loan',
+          type: LoanType.personalLoan,
+          principal: 5000,
+          annualRate: 5,
+          startDate: DateTime(2026, 1),
+          paymentMode: PaymentMode.fixedPayment,
+          fixedMonthlyPayment: 150,
+        ),
+      );
+      await tester.pumpWidget(
+        ChangeNotifierProvider<AppState>.value(
+          value: state,
+          child: const MaterialApp(home: PlannerScreen()),
+        ),
+      );
+
+      await tester.tap(find.byKey(const Key('add-plan-addon')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('plan-addon-amount')),
+        '1200',
+      );
+      await tester.tap(find.byKey(const Key('save-plan-addon')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Annual installment'), findsOneWidget);
+      expect(find.textContaining(r'$1,200 every'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('Planner rates the plan against monthly income', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({});
+      final state = AppState();
+      await state.addLoan(
+        Loan(
+          id: 'planner-income',
+          name: 'Planner income loan',
+          type: LoanType.personalLoan,
+          principal: 5000,
+          annualRate: 5,
+          startDate: DateTime(2026, 1),
+          paymentMode: PaymentMode.fixedPayment,
+          fixedMonthlyPayment: 500,
+        ),
+      );
+      await state.saveProfile(
+        const FinancialProfile(
+          salary: 5000,
+          salaryPeriod: SalaryPeriod.monthly,
+        ),
+      );
+      await tester.pumpWidget(
+        ChangeNotifierProvider<AppState>.value(
+          value: state,
+          child: const MaterialApp(home: PlannerScreen()),
+        ),
+      );
+
+      expect(find.byKey(const Key('planner-income-ratio')), findsOneWidget);
+      expect(find.text('14.0% of monthly income'), findsOneWidget);
+      expect(find.text('Healthy'), findsOneWidget);
     });
 
     test('Avalanche saves at least as much interest as snowball', () {
@@ -850,6 +1199,160 @@ void main() {
         expect(state.loanById(loan.id)!.extras, isEmpty);
       },
     );
+  });
+
+  group('Strategy schedule', () {
+    final loan = Loan(
+      id: 'scheduled-strategy',
+      name: 'Scheduled strategy',
+      type: LoanType.personalLoan,
+      principal: 1000,
+      annualRate: 0,
+      startDate: DateTime(2026, 1),
+      paymentMode: PaymentMode.fixedPayment,
+      fixedMonthlyPayment: 100,
+      extras: [
+        ExtraPayment(
+          id: 'monthly-extra',
+          name: 'Monthly extra',
+          amount: 100,
+          cadence: CadenceType.monthly,
+        ),
+      ],
+    );
+
+    test('pause suppresses extras only inside its inclusive month window', () {
+      final result = AmortizationEngine.simulate(
+        loan,
+        loan.extras,
+        strategySchedule: [
+          StrategyScheduleOverride(
+            id: 'summer',
+            name: 'Summer vacation',
+            startMonth: DateTime(2026, 2),
+            endMonth: DateTime(2026, 3),
+            mode: StrategyOverrideMode.paused,
+          ),
+        ],
+      );
+
+      expect(result.schedule[0].extra, closeTo(100, 0.01));
+      expect(result.schedule[1].extra, closeTo(0, 0.01));
+      expect(result.schedule[2].extra, closeTo(0, 0.01));
+      expect(result.schedule[3].extra, closeTo(100, 0.01));
+    });
+
+    test('reduction scales planned extras while minimums continue', () {
+      final result = AmortizationEngine.simulate(
+        loan,
+        loan.extras,
+        strategySchedule: [
+          StrategyScheduleOverride(
+            id: 'reduced',
+            name: 'Reduced summer budget',
+            startMonth: DateTime(2026, 2),
+            endMonth: DateTime(2026, 2),
+            mode: StrategyOverrideMode.reduced,
+            factor: 0.5,
+          ),
+        ],
+      );
+
+      expect(result.schedule[1].payment, closeTo(100, 0.01));
+      expect(result.schedule[1].extra, closeTo(50, 0.01));
+    });
+
+    test('payoff planner includes scheduled pauses in its preview', () {
+      final plan = PayoffPlanner.plan(
+        loans: [loan.copyWith(extras: const [])],
+        startingBalances: {loan.id: loan.principal},
+        method: PlanMethod.snowball,
+        monthlyBudget: 100,
+        planStart: DateTime(2026, 1),
+        strategySchedule: [
+          StrategyScheduleOverride(
+            id: 'first-two-months',
+            name: 'Initial pause',
+            startMonth: DateTime(2026, 1),
+            endMonth: DateTime(2026, 2),
+            mode: StrategyOverrideMode.paused,
+          ),
+        ],
+      );
+
+      expect(plan.loanResults.single.firstTargetMonth, 3);
+    });
+
+    test('scheduled windows persist locally', () async {
+      SharedPreferences.setMockInitialValues({});
+      final state = AppState();
+      await state.load();
+      await state.addStrategyScheduleOverride(
+        StrategyScheduleOverride(
+          id: 'persisted-window',
+          name: 'Summer vacation',
+          startMonth: DateTime(2027, 6),
+          endMonth: DateTime(2027, 8),
+          mode: StrategyOverrideMode.paused,
+        ),
+      );
+
+      final reloaded = AppState();
+      await reloaded.load();
+
+      expect(reloaded.strategySchedule, hasLength(1));
+      expect(reloaded.strategySchedule.single.name, 'Summer vacation');
+      expect(reloaded.strategySchedule.single.endMonth, DateTime(2027, 8));
+    });
+
+    test('resuming an open pause preserves its completed history', () async {
+      SharedPreferences.setMockInitialValues({});
+      final state = AppState();
+      await state.load();
+      await state.addStrategyScheduleOverride(
+        StrategyScheduleOverride(
+          id: 'open-pause',
+          name: 'Time away',
+          startMonth: DateTime(2026, 6),
+          mode: StrategyOverrideMode.paused,
+        ),
+      );
+
+      await state.resumeStrategyScheduleOverride(
+        'open-pause',
+        asOf: DateTime(2026, 9, 10),
+      );
+
+      expect(state.strategySchedule.single.endMonth, DateTime(2026, 8));
+    });
+
+    test('schedule-only state is included in account sync', () async {
+      SharedPreferences.setMockInitialValues({});
+      final state = AppState();
+      await state.load();
+      await state.addStrategyScheduleOverride(
+        StrategyScheduleOverride(
+          id: 'synced-pause',
+          name: 'Synced vacation',
+          startMonth: DateTime(2027, 7),
+          endMonth: DateTime(2027, 7),
+          mode: StrategyOverrideMode.paused,
+        ),
+      );
+      final sync = _FakeSyncService();
+      state.configureSync(sync);
+
+      await state.setSyncSession(
+        ({bool forceRefresh = false}) async => 'token',
+        userId: 'schedule-user',
+      );
+
+      expect(sync.pushed, isNotNull);
+      expect(
+        (sync.pushed!.strategySchedule.single as Map<String, dynamic>)['id'],
+        'synced-pause',
+      );
+    });
   });
 }
 

@@ -1,5 +1,6 @@
 import '../models/loan.dart';
 import '../models/extra_payment.dart';
+import '../models/strategy_schedule_override.dart';
 
 class MonthRow {
   final int monthIndex; // 1-based
@@ -51,8 +52,7 @@ class ComparisonResult {
   double get interestSaved =>
       baseline.totalInterest - accelerated.totalInterest;
 
-  int get monthsSaved =>
-      baseline.monthsToPayoff - accelerated.monthsToPayoff;
+  int get monthsSaved => baseline.monthsToPayoff - accelerated.monthsToPayoff;
 
   String get timeSavedLabel {
     final years = monthsSaved ~/ 12;
@@ -70,8 +70,9 @@ class AmortizationEngine {
   /// they occur (a month may receive multiple every-N-weeks payments).
   static SimulationResult simulate(
     Loan loan,
-    List<ExtraPayment> extras,
-  ) {
+    List<ExtraPayment> extras, {
+    List<StrategyScheduleOverride> strategySchedule = const [],
+  }) {
     final activeExtras = extras.where((e) => e.enabled).toList();
     final monthlyPayment = loan.monthlyPayment;
     final r = loan.monthlyRate;
@@ -92,7 +93,9 @@ class AmortizationEngine {
       final start = e.startDate ?? loan.startDate;
       DateTime d = start;
       final end = DateTime(
-          loan.startDate.year + (maxMonths ~/ 12) + 2, loan.startDate.month);
+        loan.startDate.year + (maxMonths ~/ 12) + 2,
+        loan.startDate.month,
+      );
       while (d.isBefore(end)) {
         final key = d.year * 12 + (d.month - 1);
         weeklyExtraByMonth[key] = (weeklyExtraByMonth[key] ?? 0) + e.amount;
@@ -104,8 +107,11 @@ class AmortizationEngine {
     bool stalled = false;
     while (balance > 0.005 && m < maxMonths) {
       m++;
-      final date =
-          DateTime(loan.startDate.year, loan.startDate.month + m - 1, 1);
+      final date = DateTime(
+        loan.startDate.year,
+        loan.startDate.month + m - 1,
+        1,
+      );
 
       final interest = balance * r;
       double scheduled = monthlyPayment;
@@ -137,15 +143,14 @@ class AmortizationEngine {
             break;
           case CadenceType.oneTime:
             final d = e.oneTimeDate;
-            if (d != null &&
-                d.year == date.year &&
-                d.month == date.month) {
+            if (d != null && d.year == date.year && d.month == date.month) {
               extra += e.amount;
             }
             break;
         }
       }
       extra += weeklyExtraByMonth[monthKey] ?? 0;
+      extra *= StrategyScheduleOverride.factorFor(date, strategySchedule);
 
       // If principal part is not positive and no extra, the balance grows —
       // clamp scheduled payment to cover at least interest so the schedule
@@ -157,15 +162,17 @@ class AmortizationEngine {
         totalInterest += interest;
         totalPaid += scheduled;
         balance += unpaid;
-        schedule.add(MonthRow(
-          monthIndex: m,
-          date: date,
-          payment: scheduled,
-          extra: 0,
-          interest: interest,
-          principalPaid: principalPart,
-          balance: balance,
-        ));
+        schedule.add(
+          MonthRow(
+            monthIndex: m,
+            date: date,
+            payment: scheduled,
+            extra: 0,
+            interest: interest,
+            principalPaid: principalPart,
+            balance: balance,
+          ),
+        );
         // If it's clearly diverging, stop early after a year of growth.
         if (m > 12 && schedule.length > 12) {
           final prev = schedule[schedule.length - 13].balance;
@@ -191,20 +198,23 @@ class AmortizationEngine {
       totalInterest += interest;
       totalPaid += scheduled + extra;
 
-      schedule.add(MonthRow(
-        monthIndex: m,
-        date: date,
-        payment: scheduled,
-        extra: extra,
-        interest: interest,
-        principalPaid: principalPart,
-        balance: balance,
-      ));
+      schedule.add(
+        MonthRow(
+          monthIndex: m,
+          date: date,
+          payment: scheduled,
+          extra: extra,
+          interest: interest,
+          principalPaid: principalPart,
+          balance: balance,
+        ),
+      );
     }
 
     final neverPaysOff = balance > 0.005 || stalled && balance > 0.005;
-    final payoffDate =
-        schedule.isNotEmpty ? schedule.last.date : loan.startDate;
+    final payoffDate = schedule.isNotEmpty
+        ? schedule.last.date
+        : loan.startDate;
 
     return SimulationResult(
       schedule: schedule,
@@ -216,9 +226,16 @@ class AmortizationEngine {
     );
   }
 
-  static ComparisonResult compare(Loan loan) {
+  static ComparisonResult compare(
+    Loan loan, {
+    List<StrategyScheduleOverride> strategySchedule = const [],
+  }) {
     final baseline = simulate(loan, const []);
-    final accelerated = simulate(loan, loan.extras);
+    final accelerated = simulate(
+      loan,
+      loan.extras,
+      strategySchedule: strategySchedule,
+    );
     return ComparisonResult(baseline: baseline, accelerated: accelerated);
   }
 }

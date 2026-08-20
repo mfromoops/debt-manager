@@ -10,12 +10,16 @@ class SyncDocument {
     required this.updatedAt,
     required this.rev,
     this.deviceId,
+    this.profile,
+    this.strategySchedule = const [],
   });
 
   final List<dynamic> loans;
   final DateTime updatedAt;
   final String rev;
   final String? deviceId;
+  final Map<String, dynamic>? profile;
+  final List<dynamic> strategySchedule;
 
   factory SyncDocument.fromJson(Map<String, dynamic> json) {
     return SyncDocument(
@@ -23,15 +27,19 @@ class SyncDocument {
       updatedAt: DateTime.parse(json['updatedAt'] as String),
       rev: json['rev'] as String,
       deviceId: json['deviceId'] as String?,
+      profile: json['profile'] as Map<String, dynamic>?,
+      strategySchedule: json['strategySchedule'] as List<dynamic>? ?? [],
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'loans': loans,
-        'updatedAt': updatedAt.toUtc().toIso8601String(),
-        'rev': rev,
-        'deviceId': deviceId,
-      };
+    'loans': loans,
+    'updatedAt': updatedAt.toUtc().toIso8601String(),
+    'rev': rev,
+    'deviceId': deviceId,
+    'profile': profile,
+    'strategySchedule': strategySchedule,
+  };
 }
 
 class SyncService {
@@ -43,10 +51,12 @@ class SyncService {
 
   Future<SyncDocument?> fetchState(String accessToken) async {
     if (!isConfigured) return null;
-    final response = await _client.get(
-      SyncConfig.stateUri(),
-      headers: {'authorization': 'Bearer $accessToken'},
-    ).timeout(const Duration(seconds: 10));
+    final response = await _client
+        .get(
+          SyncConfig.stateUri(),
+          headers: {'authorization': 'Bearer $accessToken'},
+        )
+        .timeout(const Duration(seconds: 10));
 
     if (response.statusCode == 404 || response.body == 'null') return null;
     if (response.statusCode == 401) {
@@ -55,7 +65,9 @@ class SyncService {
       );
     }
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw SyncException('Sync pull failed: ${response.statusCode} ${response.body}');
+      throw SyncException(
+        'Sync pull failed: ${response.statusCode} ${response.body}',
+      );
     }
 
     final body = jsonDecode(response.body);
@@ -68,14 +80,16 @@ class SyncService {
     SyncDocument document,
   ) async {
     if (!isConfigured) return document;
-    final response = await _client.put(
-      SyncConfig.stateUri(),
-      headers: {
-        'authorization': 'Bearer $accessToken',
-        'content-type': 'application/json',
-      },
-      body: jsonEncode(document.toJson()),
-    ).timeout(const Duration(seconds: 10));
+    final response = await _client
+        .put(
+          SyncConfig.stateUri(),
+          headers: {
+            'authorization': 'Bearer $accessToken',
+            'content-type': 'application/json',
+          },
+          body: jsonEncode(document.toJson()),
+        )
+        .timeout(const Duration(seconds: 10));
 
     if (response.statusCode == 401) {
       throw SyncUnauthorizedException(
@@ -83,10 +97,14 @@ class SyncService {
       );
     }
     if (response.statusCode != 200 && response.statusCode != 409) {
-      throw SyncException('Sync push failed: ${response.statusCode} ${response.body}');
+      throw SyncException(
+        'Sync push failed: ${response.statusCode} ${response.body}',
+      );
     }
 
-    return SyncDocument.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    return SyncDocument.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
 
   void close() => _client.close();
