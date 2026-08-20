@@ -7,11 +7,18 @@ import 'services/app_state.dart';
 import 'services/sync_service.dart';
 import 'screens/home_shell.dart';
 
-// Minimalist palette - Style 3
-const kAccent = Color(0xFF2D6A4F); // forest green
-const kInk = Color(0xFF111411);
-const kSubtle = Color(0xFF8A8F8A);
-const kHairline = Color(0xFFE7E9E7);
+// Shared with the DebtFold marketing site.
+const kCanvas = Color(0xFFFBFCFA);
+const kSurface = Color(0xFFFFFFFF);
+const kAccent = Color(0xFF2D6A4F);
+const kAccentDark = Color(0xFF22533D);
+const kAccentFocus = Color(0xFF91C2A8);
+const kAccentPale = Color(0xFFBCE5CB);
+const kInk = Color(0xFF1D2521);
+const kSubtle = Color(0xFF6F7973);
+const kSoft = Color(0xFFF3F7F4);
+const kBorder = Color(0xFFDCE8E0);
+const kHairline = Color(0xFFE8ECE9);
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -50,15 +57,39 @@ class DebtManagerApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        scaffoldBackgroundColor: Colors.white,
+        scaffoldBackgroundColor: kCanvas,
         colorScheme: ColorScheme.fromSeed(
           seedColor: kAccent,
           primary: kAccent,
-          surface: Colors.white,
+          surface: kSurface,
         ),
-        fontFamily: 'Roboto',
+        fontFamily: 'DM Sans',
+        textTheme: const TextTheme(
+          headlineLarge: TextStyle(
+            color: kInk,
+            fontSize: 34,
+            height: 1.12,
+            fontWeight: FontWeight.w500,
+            letterSpacing: -1.1,
+          ),
+          headlineMedium: TextStyle(
+            color: kInk,
+            fontSize: 26,
+            height: 1.15,
+            fontWeight: FontWeight.w500,
+            letterSpacing: -0.6,
+          ),
+          titleLarge: TextStyle(
+            color: kInk,
+            fontSize: 20,
+            fontWeight: FontWeight.w500,
+            letterSpacing: -0.2,
+          ),
+          bodyMedium: TextStyle(color: kInk, fontSize: 14, height: 1.5),
+          bodySmall: TextStyle(color: kSubtle, fontSize: 12, height: 1.45),
+        ),
         appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.white,
+          backgroundColor: kCanvas,
           foregroundColor: kInk,
           elevation: 0,
           scrolledUnderElevation: 0,
@@ -66,8 +97,8 @@ class DebtManagerApp extends StatelessWidget {
           titleTextStyle: TextStyle(
             color: kInk,
             fontSize: 22,
-            fontWeight: FontWeight.w300,
-            letterSpacing: 0.2,
+            fontWeight: FontWeight.w500,
+            letterSpacing: -0.4,
           ),
         ),
         dividerTheme: const DividerThemeData(
@@ -92,7 +123,7 @@ class DebtManagerApp extends StatelessWidget {
             foregroundColor: Colors.white,
             elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(8),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
             textStyle: const TextStyle(
@@ -104,6 +135,25 @@ class DebtManagerApp extends StatelessWidget {
         ),
         textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(foregroundColor: kAccent),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: kAccent,
+            side: const BorderSide(color: kBorder),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 15),
+          ),
+        ),
+        cardTheme: CardThemeData(
+          color: kSurface,
+          elevation: 0,
+          margin: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            side: const BorderSide(color: kBorder),
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
         inputDecorationTheme: const InputDecorationTheme(
           border: UnderlineInputBorder(

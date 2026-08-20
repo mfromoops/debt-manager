@@ -13,6 +13,7 @@ class SignInScreen extends StatelessWidget {
     final canSignIn = auth.isConfigured && !auth.busy;
 
     return Scaffold(
+      backgroundColor: kInk,
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -23,29 +24,55 @@ class SignInScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Image.asset(
-                    'assets/icon/app_icon.png',
-                    width: 72,
-                    height: 72,
-                    semanticLabel: 'DebtFold logo',
+                  Row(
+                    children: [
+                      Image.asset(
+                        'assets/icon/app_icon.png',
+                        width: 36,
+                        height: 36,
+                        semanticLabel: 'DebtFold logo',
+                      ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'DebtFold',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 64),
                   const Text(
-                    'DebtFold',
+                    'DEBT PAYOFF PLANNER',
                     style: TextStyle(
-                      fontSize: 34,
-                      fontWeight: FontWeight.w200,
-                      color: kInk,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: kAccentPale,
+                      letterSpacing: 1.5,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   const Text(
-                    'Sign in to keep your payoff plan connected to your account.',
+                    'See the move.\nThen make it.',
+                    style: TextStyle(
+                      fontSize: 42,
+                      height: 1.08,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white,
+                      letterSpacing: -1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  const Text(
+                    'Compare payoff strategies, understand the tradeoff, and keep your plan moving.',
                     style: TextStyle(
                       fontSize: 15,
-                      fontWeight: FontWeight.w300,
-                      color: kSubtle,
-                      height: 1.5,
+                      fontWeight: FontWeight.w400,
+                      color: Color(0xFFB4C0B9),
+                      height: 1.55,
                     ),
                   ),
                   const SizedBox(height: 32),
@@ -70,6 +97,9 @@ class SignInScreen extends StatelessWidget {
                     width: double.infinity,
                     child: TextButton(
                       onPressed: auth.busy ? null : auth.continueAsGuest,
+                      style: TextButton.styleFrom(
+                        foregroundColor: kAccentPale,
+                      ),
                       child: const Text('Continue without signing in'),
                     ),
                   ),
@@ -80,7 +110,7 @@ class SignInScreen extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w300,
-                      color: kSubtle,
+                      color: Color(0xFFB4C0B9),
                       height: 1.4,
                     ),
                   ),

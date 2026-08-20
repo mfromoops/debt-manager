@@ -49,96 +49,153 @@ class LoansOverviewScreen extends StatelessWidget {
         child: state.loans.isEmpty
             ? _emptyState(context)
             : SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 32),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Home',
-                          style: TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.w200,
-                            color: kInk,
-                            letterSpacing: 0.5,
+                    const SizedBox(height: 24),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+                      decoration: BoxDecoration(
+                        color: kInk,
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x241D2521),
+                            blurRadius: 28,
+                            offset: Offset(0, 12),
                           ),
-                        ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (state.syncing)
-                              const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: kAccent,
-                                ),
-                              )
-                            else if (state.syncError != null)
-                              Tooltip(
-                                message: state.syncError!,
-                                child: const Icon(
-                                  Icons.cloud_off_outlined,
-                                  size: 20,
-                                  color: Color(0xFFB3402E),
-                                ),
-                              )
-                            else if (auth.isAuthenticated)
-                              const Tooltip(
-                                message: 'Synced',
-                                child: Icon(
-                                  Icons.cloud_done_outlined,
-                                  size: 20,
-                                  color: kSubtle,
-                                ),
-                              )
-                            else
-                              const Tooltip(
-                                message: 'Stored on this device',
-                                child: Icon(
-                                  Icons.phone_android_outlined,
-                                  size: 20,
-                                  color: kSubtle,
-                                ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Image.asset(
+                                    'assets/icon/app_icon.png',
+                                    width: 28,
+                                    height: 28,
+                                    semanticLabel: 'DebtFold logo',
+                                  ),
+                                  const SizedBox(width: 9),
+                                  const Text(
+                                    'DebtFold',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                      letterSpacing: -0.5,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            const SizedBox(width: 8),
-                            _accountMenu(context, auth, state),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.add,
-                                size: 22,
-                                color: kAccent,
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (state.syncing)
+                                    const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: kAccentPale,
+                                      ),
+                                    )
+                                  else if (state.syncError != null)
+                                    Tooltip(
+                                      message: state.syncError!,
+                                      child: const Icon(
+                                        Icons.cloud_off_outlined,
+                                        size: 20,
+                                        color: Color(0xFFB3402E),
+                                      ),
+                                    )
+                                  else if (auth.isAuthenticated)
+                                    const Tooltip(
+                                      message: 'Synced',
+                                      child: Icon(
+                                        Icons.cloud_done_outlined,
+                                        size: 20,
+                                        color: Color(0xFFB4C0B9),
+                                      ),
+                                    )
+                                  else
+                                    const Tooltip(
+                                      message: 'Stored on this device',
+                                      child: Icon(
+                                        Icons.phone_android_outlined,
+                                        size: 20,
+                                        color: Color(0xFFB4C0B9),
+                                      ),
+                                    ),
+                                  const SizedBox(width: 8),
+                                  _accountMenu(
+                                    context,
+                                    auth,
+                                    state,
+                                    inverse: true,
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.add,
+                                      size: 22,
+                                      color: kAccentPale,
+                                    ),
+                                    onPressed: () => _addLoan(context),
+                                  ),
+                                ],
                               ),
-                              onPressed: () => _addLoan(context),
+                            ],
+                          ),
+                          const SizedBox(height: 28),
+                          const Text(
+                            'YOUR PAYOFF FORECAST',
+                            style: TextStyle(
+                              color: kAccentPale,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 1.5,
                             ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    _PaymentOverview(
-                      minimumDue: state.minimumDue,
-                      strategyPayment: state.paymentWithStrategies,
-                      strategyExtra: state.strategyExtra,
-                      upcomingLoan: upcomingLoan,
-                      upcomingDate: upcomingDate,
-                      monthlyIncome: state.monthlyIncome,
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'See the move.\nThen make it.',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 30,
+                              height: 1.08,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: -1,
+                            ),
+                          ),
+                          const SizedBox(height: 22),
+                          _PaymentOverview(
+                            minimumDue: state.minimumDue,
+                            strategyPayment: state.paymentWithStrategies,
+                            strategyExtra: state.strategyExtra,
+                            upcomingLoan: upcomingLoan,
+                            upcomingDate: upcomingDate,
+                            monthlyIncome: state.monthlyIncome,
+                          ),
+                          const SizedBox(height: 14),
+                          _DebtProgressCard(
+                            balance: state.totalDebt,
+                            interestSaved: state.totalInterestSaved,
+                            projectedBalances: state.projectedDebtBalances(),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 24),
                     _IncomeFreedomCard(
                       monthlyIncome: state.monthlyIncome,
                       minimumDue: state.minimumDue,
                       releases: state.strategyPaymentReleases(),
-                    ),
-                    const SizedBox(height: 24),
-                    _DebtProgressCard(
-                      balance: state.totalDebt,
-                      interestSaved: state.totalInterestSaved,
-                      projectedBalances: state.projectedDebtBalances(),
                     ),
                     const SizedBox(height: 28),
                     InkWell(
@@ -157,8 +214,9 @@ class LoansOverviewScreen extends StatelessWidget {
                           vertical: 14,
                         ),
                         decoration: BoxDecoration(
-                          border: Border.all(color: kHairline),
-                          borderRadius: BorderRadius.circular(4),
+                          color: kSurface,
+                          border: Border.all(color: kBorder),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                         child: Row(
                           children: [
@@ -220,8 +278,9 @@ class LoansOverviewScreen extends StatelessWidget {
                           vertical: 14,
                         ),
                         decoration: BoxDecoration(
+                          color: kSoft,
                           border: Border.all(color: kAccent),
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                         child: const Row(
                           children: [
@@ -373,13 +432,22 @@ class LoansOverviewScreen extends StatelessWidget {
     );
   }
 
-  Widget _accountMenu(BuildContext context, AuthService auth, AppState state) {
+  Widget _accountMenu(
+    BuildContext context,
+    AuthService auth,
+    AppState state, {
+    bool inverse = false,
+  }) {
     final hasStrategies =
         state.loans.any((loan) => loan.extras.isNotEmpty) ||
         state.strategySchedule.isNotEmpty;
     return PopupMenuButton<String>(
       tooltip: auth.user?.displayName ?? 'Account',
-      icon: const Icon(Icons.account_circle_outlined, size: 22, color: kSubtle),
+      icon: Icon(
+        Icons.account_circle_outlined,
+        size: 22,
+        color: inverse ? const Color(0xFFB4C0B9) : kSubtle,
+      ),
       onSelected: (value) async {
         if (value == 'profile') {
           await Navigator.of(
@@ -501,9 +569,9 @@ class _IncomeFreedomCard extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: const Color(0xFFFFFCF4),
+            color: kSurface,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFEDE4CE)),
+            border: Border.all(color: kBorder),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -837,7 +905,11 @@ class _DebtProgressCard extends StatelessWidget {
       child: Container(
         key: const Key('debt-progress-card'),
         height: 244,
-        decoration: const BoxDecoration(color: Color(0xFFF7F9F7)),
+        decoration: BoxDecoration(
+          color: const Color(0xFF15201B),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+          borderRadius: BorderRadius.circular(12),
+        ),
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -856,14 +928,48 @@ class _DebtProgressCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'DEBT PROGRESS',
-                    style: TextStyle(
-                      fontSize: 10,
-                      letterSpacing: 1.4,
-                      fontWeight: FontWeight.w500,
-                      color: kSubtle,
-                    ),
+                  Row(
+                    children: [
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: const BoxDecoration(
+                          color: kAccentFocus,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'BALANCE REMAINING',
+                        style: TextStyle(
+                          fontSize: 10,
+                          letterSpacing: 1.35,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFFB4C0B9),
+                        ),
+                      ),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 9,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.12),
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text(
+                          'YOUR PLAN',
+                          style: TextStyle(
+                            color: Color(0xFFB4C0B9),
+                            fontSize: 8,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 8),
                   Row(
@@ -877,7 +983,7 @@ class _DebtProgressCard extends StatelessWidget {
                           style: const TextStyle(
                             fontSize: 36,
                             fontWeight: FontWeight.w200,
-                            color: kInk,
+                            color: Colors.white,
                             letterSpacing: -0.5,
                           ),
                         ),
@@ -890,7 +996,7 @@ class _DebtProgressCard extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w300,
-                            color: kSubtle,
+                            color: Color(0xFFB4C0B9),
                           ),
                         ),
                       ),
@@ -906,7 +1012,9 @@ class _DebtProgressCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w400,
-                      color: interestSaved > 0.5 ? kAccent : kSubtle,
+                      color: interestSaved > 0.5
+                          ? kAccentPale
+                          : const Color(0xFFB4C0B9),
                     ),
                   ),
                 ],
@@ -931,10 +1039,10 @@ class _ProjectedBalancePainter extends CustomPainter {
         ? 0.0
         : balances.reduce((a, b) => a > b ? a : b);
     final axisPaint = Paint()
-      ..color = kSubtle.withValues(alpha: 0.35)
+      ..color = Colors.white.withValues(alpha: 0.18)
       ..strokeWidth = 0.8;
     final gridPaint = Paint()
-      ..color = kSubtle.withValues(alpha: 0.13)
+      ..color = Colors.white.withValues(alpha: 0.08)
       ..strokeWidth = 0.8;
 
     for (var i = 0; i <= 2; i++) {
@@ -956,7 +1064,7 @@ class _ProjectedBalancePainter extends CustomPainter {
       fontSize: 7,
       letterSpacing: 0.8,
       fontWeight: FontWeight.w500,
-      color: kSubtle,
+      color: Color(0xFF78877F),
     );
     _paintLabel(canvas, 'BALANCE', Offset(8, plot.top - 14), style: axisStyle);
     _paintLabel(
@@ -1008,13 +1116,13 @@ class _ProjectedBalancePainter extends CustomPainter {
         ..shader = const LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0x1F2D6A4F), Color(0x052D6A4F)],
+          colors: [Color(0x4D91C2A8), Color(0x0091C2A8)],
         ).createShader(plot),
     );
     canvas.drawPath(
       line,
       Paint()
-        ..color = kAccent.withValues(alpha: 0.28)
+        ..color = kAccentPale
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2
         ..strokeCap = StrokeCap.round
@@ -1026,7 +1134,10 @@ class _ProjectedBalancePainter extends CustomPainter {
     Canvas canvas,
     String text,
     Offset offset, {
-    TextStyle style = const TextStyle(fontSize: 8, color: kSubtle),
+    TextStyle style = const TextStyle(
+      fontSize: 8,
+      color: Color(0xFF78877F),
+    ),
     bool alignRight = false,
     bool centered = false,
     bool centerVertically = false,
@@ -1096,29 +1207,50 @@ class _PaymentOverview extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F7F4),
+        color: Colors.white.withValues(alpha: 0.025),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFDCE8E0)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.13)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'THIS PAYMENT CYCLE',
-            style: TextStyle(
-              fontSize: 10,
-              letterSpacing: 1.4,
-              fontWeight: FontWeight.w500,
-              color: kAccent,
-            ),
+          Row(
+            children: [
+              const Text(
+                'THIS PAYMENT CYCLE',
+                style: TextStyle(
+                  fontSize: 10,
+                  letterSpacing: 1.4,
+                  fontWeight: FontWeight.w500,
+                  color: kAccentPale,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                decoration: BoxDecoration(
+                  color: kAccentFocus.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text(
+                  'SELECTED PLAN',
+                  style: TextStyle(
+                    color: kAccentPale,
+                    fontSize: 8,
+                    letterSpacing: 0.8,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           const Text(
             'Plan to pay',
             style: TextStyle(
               fontSize: 13,
-              fontWeight: FontWeight.w300,
-              color: kSubtle,
+              fontWeight: FontWeight.w400,
+              color: Color(0xFFB4C0B9),
             ),
           ),
           const SizedBox(height: 2),
@@ -1127,8 +1259,8 @@ class _PaymentOverview extends StatelessWidget {
             key: const Key('strategy-payment-total'),
             style: const TextStyle(
               fontSize: 36,
-              fontWeight: FontWeight.w300,
-              color: kInk,
+              fontWeight: FontWeight.w500,
+              color: Colors.white,
               letterSpacing: -0.4,
             ),
           ),
@@ -1140,7 +1272,7 @@ class _PaymentOverview extends StatelessWidget {
             style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w300,
-              color: kSubtle,
+              color: Color(0xFFB4C0B9),
               height: 1.4,
             ),
           ),
@@ -1149,7 +1281,11 @@ class _PaymentOverview extends StatelessWidget {
             Row(
               key: const Key('payment-income-ratio'),
               children: [
-                const Icon(Icons.pie_chart_outline, size: 16, color: kAccent),
+                const Icon(
+                  Icons.pie_chart_outline,
+                  size: 16,
+                  color: kAccentPale,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -1157,7 +1293,7 @@ class _PaymentOverview extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w400,
-                      color: kAccent,
+                      color: kAccentPale,
                     ),
                   ),
                 ),
@@ -1174,12 +1310,12 @@ class _PaymentOverview extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w400,
-                  color: kAccent,
+                  color: kAccentPale,
                 ),
               ),
             ),
           const SizedBox(height: 20),
-          const Divider(color: Color(0xFFDCE8E0)),
+          Divider(color: Colors.white.withValues(alpha: 0.10)),
           const SizedBox(height: 16),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1189,9 +1325,14 @@ class _PaymentOverview extends StatelessWidget {
                   label: 'MINIMUM DUE',
                   value: money.format(minimumDue),
                   valueKey: const Key('minimum-due'),
+                  inverse: true,
                 ),
               ),
-              Container(width: 1, height: 42, color: const Color(0xFFDCE8E0)),
+              Container(
+                width: 1,
+                height: 42,
+                color: Colors.white.withValues(alpha: 0.10),
+              ),
               const SizedBox(width: 20),
               Expanded(
                 child: _PaymentFact(
@@ -1201,10 +1342,49 @@ class _PaymentOverview extends StatelessWidget {
                       : DateFormat('MMM d').format(upcomingDate!),
                   detail: upcomingLoan?.name,
                   valueKey: const Key('next-payment-date'),
+                  inverse: true,
                 ),
               ),
             ],
           ),
+          if (hasStrategy) ...[
+            const SizedBox(height: 18),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 13,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: kAccentDark,
+                  border: Border.all(
+                    color: kAccentFocus.withValues(alpha: 0.35),
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.arrow_outward,
+                      size: 16,
+                      color: kAccentPale,
+                    ),
+                    const SizedBox(width: 9),
+                    Text(
+                      '${money.format(strategyExtra)} extra applied',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -1216,12 +1396,14 @@ class _PaymentFact extends StatelessWidget {
   final String value;
   final String? detail;
   final Key? valueKey;
+  final bool inverse;
 
   const _PaymentFact({
     required this.label,
     required this.value,
     this.detail,
     this.valueKey,
+    this.inverse = false,
   });
 
   @override
@@ -1235,7 +1417,7 @@ class _PaymentFact extends StatelessWidget {
             fontSize: 9,
             letterSpacing: 1.2,
             fontWeight: FontWeight.w500,
-            color: kSubtle,
+            color: inverse ? const Color(0xFFB4C0B9) : kSubtle,
           ),
         ),
         const SizedBox(height: 5),
@@ -1245,7 +1427,7 @@ class _PaymentFact extends StatelessWidget {
           style: const TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w500,
-            color: kInk,
+            color: inverse ? Colors.white : kInk,
           ),
         ),
         if (detail != null) ...[
@@ -1257,7 +1439,7 @@ class _PaymentFact extends StatelessWidget {
             style: const TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w300,
-              color: kSubtle,
+              color: inverse ? const Color(0xFFB4C0B9) : kSubtle,
             ),
           ),
         ],
