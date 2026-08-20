@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  website:
+    name: Website / Worker
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/website
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install website dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run website tests
+        run: npm test -- --run
+      - name: Build Astro website and Cloudflare Worker
+        run: npm run build
+
+  flutter:
+    name: Flutter tests, web, and APK
+    runs-on: ubuntu-latest
+    container: ghcr.io/cirruslabs/flutter:stable
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Install Flutter dependencies
+        run: flutter pub get
+      - name: Check formatting
+        run: dart format --output=none --set-exit-if-changed lib test
+      - name: Run Flutter tests
+        run: flutter test
+      - name: Build Flutter web app
+        run: flutter build web --release
+      - name: Build Android APK
+        run: flutter build apk --release
