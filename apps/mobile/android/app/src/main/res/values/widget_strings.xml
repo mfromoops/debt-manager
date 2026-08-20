@@ -6,4 +6,6 @@
     <string name="debt_progress_widget_description">Your remaining debt and payoff progress</string>
     <string name="next_payment_widget_name">Next payment</string>
     <string name="next_payment_widget_description">The next debt payment due</string>
+    <string name="income_freedom_widget_name">Income freedom</string>
+    <string name="income_freedom_widget_description">Your strategy-adjusted income release timeline</string>
 </resources>

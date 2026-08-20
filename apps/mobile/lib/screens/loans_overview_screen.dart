@@ -9,7 +9,10 @@ import '../services/auth_service.dart';
 import '../services/app_state.dart';
 import 'loan_edit_screen.dart';
 import 'loan_detail_shell.dart';
+import 'income_freedom_screen.dart';
 import 'planner_screen.dart';
+import 'profile_screen.dart';
+import 'strategy_schedule_screen.dart';
 
 class LoansOverviewScreen extends StatelessWidget {
   const LoansOverviewScreen({super.key});
@@ -123,6 +126,13 @@ class LoansOverviewScreen extends StatelessWidget {
                       strategyExtra: state.strategyExtra,
                       upcomingLoan: upcomingLoan,
                       upcomingDate: upcomingDate,
+                      monthlyIncome: state.monthlyIncome,
+                    ),
+                    const SizedBox(height: 24),
+                    _IncomeFreedomCard(
+                      monthlyIncome: state.monthlyIncome,
+                      minimumDue: state.minimumDue,
+                      releases: state.strategyPaymentReleases(),
                     ),
                     const SizedBox(height: 24),
                     _DebtProgressCard(
@@ -131,6 +141,69 @@ class LoansOverviewScreen extends StatelessWidget {
                       projectedBalances: state.projectedDebtBalances(),
                     ),
                     const SizedBox(height: 28),
+                    InkWell(
+                      key: const Key('strategy-schedule-entry'),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const StrategyScheduleScreen(),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: kHairline),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.calendar_month_outlined,
+                              size: 18,
+                              color: kAccent,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Strategy schedule',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w400,
+                                      color: kInk,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    state.strategySchedule.isEmpty
+                                        ? 'Plan a pause or temporary reduction'
+                                        : '${state.strategySchedule.length} scheduled window${state.strategySchedule.length == 1 ? '' : 's'}',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w300,
+                                      color: kSubtle,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(
+                              Icons.chevron_right,
+                              size: 18,
+                              color: kSubtle,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     // Payoff Planner entry
                     InkWell(
                       onTap: () {
@@ -301,12 +374,18 @@ class LoansOverviewScreen extends StatelessWidget {
   }
 
   Widget _accountMenu(BuildContext context, AuthService auth, AppState state) {
-    final hasStrategies = state.loans.any((loan) => loan.extras.isNotEmpty);
+    final hasStrategies =
+        state.loans.any((loan) => loan.extras.isNotEmpty) ||
+        state.strategySchedule.isNotEmpty;
     return PopupMenuButton<String>(
       tooltip: auth.user?.displayName ?? 'Account',
       icon: const Icon(Icons.account_circle_outlined, size: 22, color: kSubtle),
       onSelected: (value) async {
-        if (value == 'clear-strategies') {
+        if (value == 'profile') {
+          await Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const ProfileScreen()));
+        } else if (value == 'clear-strategies') {
           await _confirmClearStrategies(context);
         } else if (value == 'sign-out') {
           await auth.signOut();
@@ -320,6 +399,15 @@ class LoansOverviewScreen extends StatelessWidget {
           child: Text(
             auth.user?.email ?? 'Stored on this device',
             style: const TextStyle(fontSize: 12, color: kSubtle),
+          ),
+        ),
+        const PopupMenuDivider(),
+        const PopupMenuItem<String>(
+          value: 'profile',
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.person_outline, size: 19),
+            title: Text('Profile'),
           ),
         ),
         if (hasStrategies) ...[
@@ -351,7 +439,7 @@ class LoansOverviewScreen extends StatelessWidget {
       builder: (dialogContext) => AlertDialog(
         title: const Text('Clear all strategies?'),
         content: const Text(
-          'This removes every extra payment strategy from every debt.',
+          'This removes every extra payment strategy and all scheduled pause or reduction windows.',
         ),
         actions: [
           TextButton(
@@ -373,6 +461,360 @@ class LoansOverviewScreen extends StatelessWidget {
       context,
     ).showSnackBar(const SnackBar(content: Text('All strategies removed.')));
   }
+}
+
+class _IncomeFreedomCard extends StatelessWidget {
+  final double? monthlyIncome;
+  final double minimumDue;
+  final List<IncomeRelease> releases;
+
+  const _IncomeFreedomCard({
+    required this.monthlyIncome,
+    required this.minimumDue,
+    required this.releases,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final money = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
+    final income = monthlyIncome;
+    final projectedAvailable = income == null
+        ? null
+        : income -
+              minimumDue +
+              releases.fold<double>(0, (sum, release) => sum + release.amount);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        key: const Key('income-freedom-open'),
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => income == null || income <= 0
+                ? const ProfileScreen()
+                : const IncomeFreedomScreen(),
+          ),
+        ),
+        child: Container(
+          key: const Key('income-freedom-card'),
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFFCF4),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFEDE4CE)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.trending_up, size: 16, color: kAccent),
+                  SizedBox(width: 8),
+                  Text(
+                    'INCOME FREEDOM',
+                    style: TextStyle(
+                      fontSize: 10,
+                      letterSpacing: 1.4,
+                      fontWeight: FontWeight.w500,
+                      color: kAccent,
+                    ),
+                  ),
+                  Spacer(),
+                  Icon(Icons.chevron_right, size: 18, color: kSubtle),
+                ],
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'How your monthly income opens up',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w400,
+                  color: kInk,
+                ),
+              ),
+              const SizedBox(height: 3),
+              const Text(
+                'Strategy-adjusted release timeline',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w300,
+                  color: kSubtle,
+                ),
+              ),
+              const SizedBox(height: 18),
+              if (income == null || income <= 0)
+                const Row(
+                  key: Key('income-freedom-add-salary'),
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Add your salary to see your available income rise as each minimum payment ends.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          height: 1.4,
+                          color: kAccent,
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    Icon(Icons.arrow_forward, size: 17, color: kAccent),
+                  ],
+                )
+              else ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: _IncomeFreedomValue(
+                        label: 'AVAILABLE NOW',
+                        value: money.format(income - minimumDue),
+                        valueKey: const Key('income-freedom-now'),
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(10, 0, 10, 8),
+                      child: Icon(
+                        Icons.arrow_forward,
+                        size: 16,
+                        color: kSubtle,
+                      ),
+                    ),
+                    Expanded(
+                      child: _IncomeFreedomValue(
+                        label: 'AFTER PAYOFFS',
+                        value: money.format(projectedAvailable),
+                        alignEnd: true,
+                        valueKey: const Key('income-freedom-final'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                if (releases.isEmpty)
+                  const Text(
+                    'No minimum-payment release can be projected yet. Check any payment that does not cover its monthly interest.',
+                    style: TextStyle(fontSize: 12, height: 1.4, color: kSubtle),
+                  )
+                else ...[
+                  Semantics(
+                    label:
+                        '${releases.length} strategy-adjusted payment release dates',
+                    child: SizedBox(
+                      key: const Key('income-freedom-chart'),
+                      height: 96,
+                      width: double.infinity,
+                      child: CustomPaint(
+                        painter: _IncomeFreedomPainter(
+                          initialAvailable: income - minimumDue,
+                          releases: releases,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  ...releases
+                      .take(2)
+                      .map(
+                        (release) => Padding(
+                          padding: const EdgeInsets.only(top: 7),
+                          child: Row(
+                            key: Key(
+                              'income-release-${release.date.year}-${release.date.month}',
+                            ),
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: const BoxDecoration(
+                                  color: kAccent,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 9),
+                              Expanded(
+                                child: Text(
+                                  '${DateFormat('MMM yyyy').format(release.date)} · ${release.loanNames.join(', ')}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w300,
+                                    color: kSubtle,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '+${money.format(release.amount)}/mo',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: kAccent,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  if (releases.length > 2)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 9),
+                      child: Text(
+                        '+ ${releases.length - 2} more milestone${releases.length == 3 ? '' : 's'} shown in the timeline',
+                        style: const TextStyle(fontSize: 10, color: kSubtle),
+                      ),
+                    ),
+                ],
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _IncomeFreedomValue extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool alignEnd;
+  final Key? valueKey;
+
+  const _IncomeFreedomValue({
+    required this.label,
+    required this.value,
+    this.alignEnd = false,
+    this.valueKey,
+  });
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: alignEnd
+        ? CrossAxisAlignment.end
+        : CrossAxisAlignment.start,
+    children: [
+      Text(
+        label,
+        style: const TextStyle(
+          fontSize: 9,
+          letterSpacing: 1,
+          fontWeight: FontWeight.w500,
+          color: kSubtle,
+        ),
+      ),
+      const SizedBox(height: 3),
+      Text(
+        value,
+        key: valueKey,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.w300,
+          color: kInk,
+          letterSpacing: -0.3,
+        ),
+      ),
+    ],
+  );
+}
+
+class _IncomeFreedomPainter extends CustomPainter {
+  final double initialAvailable;
+  final List<IncomeRelease> releases;
+
+  _IncomeFreedomPainter({
+    required this.initialAvailable,
+    required this.releases,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (releases.isEmpty) return;
+    final plot = Rect.fromLTRB(3, 4, size.width - 3, size.height - 22);
+    final totalFreed = releases.fold<double>(
+      0,
+      (sum, item) => sum + item.amount,
+    );
+    final low = initialAvailable < 0 ? initialAvailable : 0.0;
+    final high = initialAvailable + totalFreed;
+    final range = (high - low).abs() < 0.01 ? 1.0 : high - low;
+    final startKey = DateTime.now().year * 12 + DateTime.now().month;
+    final end = releases.last.date;
+    final endKey = end.year * 12 + end.month;
+    final monthRange = (endKey - startKey).clamp(1, 1000000);
+    double yFor(double value) =>
+        plot.bottom - ((value - low) / range).clamp(0.0, 1.0) * plot.height;
+    double xFor(DateTime date) {
+      final key = date.year * 12 + date.month;
+      return plot.left +
+          ((key - startKey) / monthRange).clamp(0.0, 1.0) * plot.width;
+    }
+
+    final gridPaint = Paint()
+      ..color = kSubtle.withValues(alpha: 0.14)
+      ..strokeWidth = 1;
+    canvas.drawLine(plot.bottomLeft, plot.bottomRight, gridPaint);
+    canvas.drawLine(plot.topLeft, plot.topRight, gridPaint);
+
+    var available = initialAvailable;
+    final path = Path()..moveTo(plot.left, yFor(available));
+    for (final release in releases) {
+      final x = xFor(release.date);
+      path.lineTo(x, yFor(available));
+      available += release.amount;
+      path.lineTo(x, yFor(available));
+    }
+    path.lineTo(plot.right, yFor(available));
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = kAccent
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.2
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round,
+    );
+
+    _label(canvas, 'NOW', Offset(plot.left, plot.bottom + 7));
+    _label(
+      canvas,
+      DateFormat('MMM yy').format(end).toUpperCase(),
+      Offset(plot.right, plot.bottom + 7),
+      alignRight: true,
+    );
+  }
+
+  void _label(
+    Canvas canvas,
+    String text,
+    Offset offset, {
+    bool alignRight = false,
+  }) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: const TextStyle(
+          fontSize: 8,
+          letterSpacing: 0.7,
+          fontWeight: FontWeight.w500,
+          color: kSubtle,
+        ),
+      ),
+      textDirection: ui.TextDirection.ltr,
+    )..layout();
+    painter.paint(
+      canvas,
+      Offset(alignRight ? offset.dx - painter.width : offset.dx, offset.dy),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _IncomeFreedomPainter oldDelegate) =>
+      oldDelegate.initialAvailable != initialAvailable ||
+      oldDelegate.releases != releases;
 }
 
 class _DebtProgressCard extends StatelessWidget {
@@ -629,6 +1071,7 @@ class _PaymentOverview extends StatelessWidget {
   final double strategyExtra;
   final Loan? upcomingLoan;
   final DateTime? upcomingDate;
+  final double? monthlyIncome;
 
   const _PaymentOverview({
     required this.minimumDue,
@@ -636,12 +1079,18 @@ class _PaymentOverview extends StatelessWidget {
     required this.strategyExtra,
     required this.upcomingLoan,
     required this.upcomingDate,
+    required this.monthlyIncome,
   });
 
   @override
   Widget build(BuildContext context) {
     final money = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
     final hasStrategy = strategyExtra > 0.005;
+    final income = monthlyIncome;
+    final debtRatio = income == null || income <= 0
+        ? null
+        : strategyPayment / income;
+    final remainingIncome = income == null ? null : income - strategyPayment;
 
     return Container(
       width: double.infinity,
@@ -695,6 +1144,40 @@ class _PaymentOverview extends StatelessWidget {
               height: 1.4,
             ),
           ),
+          const SizedBox(height: 14),
+          if (debtRatio != null)
+            Row(
+              key: const Key('payment-income-ratio'),
+              children: [
+                const Icon(Icons.pie_chart_outline, size: 16, color: kAccent),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${(debtRatio * 100).toStringAsFixed(1)}% of monthly income · ${money.format(remainingIncome)} remaining',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w400,
+                      color: kAccent,
+                    ),
+                  ),
+                ),
+              ],
+            )
+          else
+            InkWell(
+              key: const Key('add-salary-prompt'),
+              onTap: () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const ProfileScreen())),
+              child: const Text(
+                'Add your salary in Profile to see the share of income going to debt.',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                  color: kAccent,
+                ),
+              ),
+            ),
           const SizedBox(height: 20),
           const Divider(color: Color(0xFFDCE8E0)),
           const SizedBox(height: 16),

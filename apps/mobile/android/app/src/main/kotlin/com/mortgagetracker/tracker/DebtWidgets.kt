@@ -37,12 +37,14 @@ internal object DebtWidgetUpdater {
         maximumFractionDigits = 0
     }
     private val date = SimpleDateFormat("MMM d", Locale.US)
+    private val month = SimpleDateFormat("MMM yyyy", Locale.US)
 
     fun updateAll(context: Context) {
         val manager = AppWidgetManager.getInstance(context)
         updateProvider(context, manager, PaymentCycleWidget::class.java)
         updateProvider(context, manager, DebtProgressWidget::class.java)
         updateProvider(context, manager, NextPaymentWidget::class.java)
+        updateProvider(context, manager, IncomeFreedomWidget::class.java)
     }
 
     fun updateProvider(
@@ -95,7 +97,7 @@ internal object DebtWidgetUpdater {
                 it.setTextViewText(R.id.progress_value, "$percent% paid")
                 it.setTextViewText(R.id.timeline_value, duration(months))
             }
-            else -> RemoteViews(context.packageName, R.layout.widget_next_payment).also {
+            NextPaymentWidget::class.java -> RemoteViews(context.packageName, R.layout.widget_next_payment).also {
                 val due = prefs.getLong("nextDate", 0)
                 val scheduled = prefs.getLong("nextAmount", 0)
                 val planned = prefs.getLong("nextStrategyAmount", scheduled)
@@ -115,6 +117,43 @@ internal object DebtWidgetUpdater {
                 it.setTextViewText(
                     R.id.debt_type,
                     prefs.getString("nextType", "DEBT")?.uppercase(Locale.US),
+                )
+            }
+            else -> RemoteViews(context.packageName, R.layout.widget_income_freedom).also {
+                val hasIncome = prefs.getBoolean("hasIncome", false)
+                val available = prefs.getLong("incomeAvailableNow", 0)
+                val afterPayoffs = prefs.getLong("incomeAvailableAfterPayoffs", 0)
+                val releaseDate = prefs.getLong("nextIncomeReleaseDate", 0)
+                val releaseAmount = prefs.getLong("nextIncomeReleaseAmount", 0)
+                val debtFreeDate = prefs.getLong("strategyDebtFreeDate", 0)
+                it.setTextViewText(
+                    R.id.primary_value,
+                    if (hasIncome) money.format(available) else "Add income",
+                )
+                it.setTextViewText(
+                    R.id.secondary_text,
+                    if (!hasIncome) "Add salary in Profile to unlock this forecast"
+                    else "available after this cycle's strategy payments",
+                )
+                it.setTextViewText(
+                    R.id.after_payoffs_value,
+                    if (hasIncome) money.format(afterPayoffs) else "—",
+                )
+                it.setTextViewText(
+                    R.id.next_release_value,
+                    if (releaseDate > 0) month.format(Date(releaseDate)) else "Not projected",
+                )
+                it.setTextViewText(
+                    R.id.next_release_detail,
+                    prefs.getString("nextIncomeReleaseNames", null) ?: "No active payoff milestone",
+                )
+                it.setTextViewText(
+                    R.id.release_amount_value,
+                    if (releaseAmount > 0) "+${money.format(releaseAmount)}/mo" else "",
+                )
+                it.setTextViewText(
+                    R.id.debt_free_value,
+                    if (debtFreeDate > 0) "Plan ends ${month.format(Date(debtFreeDate))}" else "Strategy timeline",
                 )
             }
         }
@@ -174,4 +213,8 @@ class DebtProgressWidget : BaseDebtWidget() {
 
 class NextPaymentWidget : BaseDebtWidget() {
     override val providerClass = NextPaymentWidget::class.java
+}
+
+class IncomeFreedomWidget : BaseDebtWidget() {
+    override val providerClass = IncomeFreedomWidget::class.java
 }

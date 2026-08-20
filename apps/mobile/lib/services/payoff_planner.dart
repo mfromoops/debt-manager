@@ -1,4 +1,6 @@
 import '../models/loan.dart';
+import '../models/extra_payment.dart';
+import '../models/strategy_schedule_override.dart';
 
 enum PlanMethod { avalanche, snowball }
 
@@ -52,6 +54,8 @@ class PlanResult {
   final int monthsToDebtFree;
   final DateTime debtFreeDate;
   final bool neverPaysOff;
+  final List<ExtraPayment> addons;
+  final List<PlanAddonAllocation> addonAllocations;
 
   const PlanResult({
     required this.method,
@@ -61,7 +65,24 @@ class PlanResult {
     required this.totalInterest,
     required this.monthsToDebtFree,
     required this.debtFreeDate,
+    this.addons = const [],
+    this.addonAllocations = const [],
     this.neverPaysOff = false,
+  });
+}
+
+/// The part of a custom plan add-on that was actually sent to a loan.
+class PlanAddonAllocation {
+  final String addonId;
+  final String loanId;
+  final int monthIndex;
+  final double amount;
+
+  const PlanAddonAllocation({
+    required this.addonId,
+    required this.loanId,
+    required this.monthIndex,
+    required this.amount,
   });
 }
 
@@ -70,7 +91,7 @@ class _SimLoan {
   double balance;
   double totalInterest = 0;
   double totalExtraPaid = 0;
-  int targetedMonths = 0;
+  final Set<int> targetedMonthIndexes = {};
   int? firstTargetMonth;
   int? payoffMonth;
 
@@ -80,21 +101,26 @@ class _SimLoan {
 class PayoffPlanner {
   static const int _maxMonths = 600; // 50-year safety bound
 
-  /// Simulate all loans together from today.
+  /// Simulate all loans together from [planStart] (the current month by
+  /// default).
   /// [monthlyBudget] is the shared extra amount applied each month to the
   /// target loan (chosen by [method]). When a loan pays off, its scheduled
   /// payment ROLLS OVER into the budget (debt-rollover effect).
   ///
-  /// Individual loan strategies (extras) are intentionally excluded here —
-  /// the planner answers "where should my extra budget go", independent of
-  /// per-loan experiments.
+  /// Existing loan strategies are intentionally excluded. [addons] are
+  /// scenario-specific shared cash events and follow the selected priority.
   static PlanResult plan({
     required List<Loan> loans,
     required Map<String, double> startingBalances,
     required PlanMethod method,
     required double monthlyBudget,
+    List<ExtraPayment> addons = const [],
+    List<StrategyScheduleOverride> strategySchedule = const [],
+    DateTime? planStart,
   }) {
-    final start = DateTime(DateTime.now().year, DateTime.now().month);
+    final requestedStart = planStart ?? DateTime.now();
+    final start = DateTime(requestedStart.year, requestedStart.month);
+    final activeAddons = addons.where((addon) => addon.enabled).toList();
     final sims = loans
         .map((l) => _SimLoan(l, startingBalances[l.id] ?? l.principal))
         .where((s) => s.balance > 0.005)
@@ -103,6 +129,7 @@ class PayoffPlanner {
     final curve = <DebtPoint>[];
     double rolledOver = 0; // freed-up scheduled payments from paid-off loans
     int m = 0;
+    final addonAllocations = <PlanAddonAllocation>[];
 
     while (sims.any((s) => s.balance > 0.005) && m < _maxMonths) {
       m++;
@@ -115,7 +142,12 @@ class PayoffPlanner {
             : a.balance.compareTo(b.balance),
       );
 
-      double budget = monthlyBudget + rolledOver;
+      final monthDate = DateTime(start.year, start.month + m - 1);
+      final strategyFactor = StrategyScheduleOverride.factorFor(
+        monthDate,
+        strategySchedule,
+      );
+      double budget = (monthlyBudget + rolledOver) * strategyFactor;
 
       // 1) Apply scheduled payments to every active loan.
       for (final s in active) {
@@ -145,12 +177,38 @@ class PayoffPlanner {
         final pay = budget >= s.balance ? s.balance : budget;
         s.balance -= pay;
         s.totalExtraPaid += pay;
-        s.targetedMonths++;
+        s.targetedMonthIndexes.add(m);
         s.firstTargetMonth ??= m;
         budget -= pay;
       }
 
-      // 3) Roll over scheduled payments of loans that just finished.
+      // 3) Apply custom cash events after the regular monthly budget. Keeping
+      // these allocations separate lets Apply Strategy reproduce them later.
+      for (final addon in activeAddons) {
+        double addonBudget =
+            _addonAmountForMonth(addon, start, m) * strategyFactor;
+        if (addonBudget <= 0.005) continue;
+        for (final s in active) {
+          if (addonBudget <= 0.005) break;
+          if (s.balance <= 0.005) continue;
+          final pay = addonBudget >= s.balance ? s.balance : addonBudget;
+          s.balance -= pay;
+          s.totalExtraPaid += pay;
+          s.targetedMonthIndexes.add(m);
+          s.firstTargetMonth ??= m;
+          addonAllocations.add(
+            PlanAddonAllocation(
+              addonId: addon.id,
+              loanId: s.loan.id,
+              monthIndex: m,
+              amount: pay,
+            ),
+          );
+          addonBudget -= pay;
+        }
+      }
+
+      // 4) Roll over scheduled payments of loans that just finished.
       for (final s in sims) {
         if (s.balance <= 0.005 && s.payoffMonth == null) {
           s.payoffMonth = m;
@@ -185,7 +243,7 @@ class PayoffPlanner {
           monthsToPayoff: s.payoffMonth!,
           totalInterest: s.totalInterest,
           totalExtraPaid: s.totalExtraPaid,
-          targetedMonths: s.targetedMonths,
+          targetedMonths: s.targetedMonthIndexes.length,
           firstTargetMonth: s.firstTargetMonth,
         ),
       );
@@ -204,8 +262,50 @@ class PayoffPlanner {
       totalInterest: totalInterest,
       monthsToDebtFree: m,
       debtFreeDate: DateTime(start.year, start.month + m - 1),
+      addons: List.unmodifiable(activeAddons),
+      addonAllocations: List.unmodifiable(addonAllocations),
       neverPaysOff: neverPaysOff,
     );
+  }
+
+  static double _addonAmountForMonth(
+    ExtraPayment addon,
+    DateTime planStart,
+    int monthIndex,
+  ) {
+    final date = DateTime(planStart.year, planStart.month + monthIndex - 1);
+    final monthKey = date.year * 12 + date.month - 1;
+    final configuredStart = addon.startDate ?? planStart;
+    final startKey = configuredStart.year * 12 + configuredStart.month - 1;
+    if (monthKey < startKey) return 0;
+
+    switch (addon.cadence) {
+      case CadenceType.monthly:
+        return addon.amount;
+      case CadenceType.annual:
+        return date.month == addon.annualMonth ? addon.amount : 0;
+      case CadenceType.everyNMonths:
+        return (monthKey - startKey) % addon.interval == 0 ? addon.amount : 0;
+      case CadenceType.oneTime:
+        final paymentDate = addon.oneTimeDate;
+        return paymentDate != null &&
+                paymentDate.year == date.year &&
+                paymentDate.month == date.month
+            ? addon.amount
+            : 0;
+      case CadenceType.everyNWeeks:
+        final intervalDays = 7 * addon.interval;
+        var occurrence = configuredStart;
+        var total = 0.0;
+        final monthEnd = DateTime(date.year, date.month + 1);
+        while (occurrence.isBefore(monthEnd)) {
+          if (occurrence.year == date.year && occurrence.month == date.month) {
+            total += addon.amount;
+          }
+          occurrence = occurrence.add(Duration(days: intervalDays));
+        }
+        return total;
+    }
   }
 
   static String monthsLabel(int months) {

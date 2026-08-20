@@ -8,6 +8,8 @@ interface Env {
 
 type SyncDocument = {
 	loans: unknown[];
+	profile?: unknown;
+	strategySchedule?: unknown[];
 	updatedAt: string;
 	rev: string;
 	deviceId?: string;

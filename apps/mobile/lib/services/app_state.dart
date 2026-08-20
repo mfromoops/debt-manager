@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/loan.dart';
 import '../models/extra_payment.dart';
 import '../models/progress_entry.dart';
+import '../models/financial_profile.dart';
+import '../models/strategy_schedule_override.dart';
 import 'amortization_engine.dart';
 import 'payoff_planner.dart';
 import 'sync_service.dart';
@@ -17,6 +19,37 @@ enum LoanSortOption {
   addedRecently,
   minimumDue,
   interestRate,
+}
+
+/// A month when one or more required debt payments disappear from the
+/// household budget. This projection deliberately ignores extra-payment
+/// strategies.
+class IncomeRelease {
+  final DateTime date;
+  final double amount;
+  final List<String> loanNames;
+
+  const IncomeRelease({
+    required this.date,
+    required this.amount,
+    required this.loanNames,
+  });
+}
+
+/// Per-debt comparison of when a required minimum payment is released with
+/// and without the debt's active extra-payment strategies.
+class StrategyIncomeRelease {
+  final String loanName;
+  final double minimumPayment;
+  final DateTime? minimumOnlyDate;
+  final DateTime? strategyDate;
+
+  const StrategyIncomeRelease({
+    required this.loanName,
+    required this.minimumPayment,
+    required this.minimumOnlyDate,
+    required this.strategyDate,
+  });
 }
 
 extension LoanSortOptionInfo on LoanSortOption {
@@ -40,6 +73,8 @@ extension LoanSortOptionInfo on LoanSortOption {
 
 class AppState extends ChangeNotifier {
   static const _loansKey = 'loans';
+  static const _profileKey = 'financialProfile';
+  static const _strategyScheduleKey = 'strategySchedule';
   static const _loanSortKey = 'loans.sort';
   static const _syncUpdatedAtKey = 'loans.syncUpdatedAt';
   static const _syncRevKey = 'loans.syncRev';
@@ -47,6 +82,8 @@ class AppState extends ChangeNotifier {
   static const _syncOwnerIdKey = 'loans.syncOwnerId';
 
   List<Loan> _loans = [];
+  FinancialProfile? _profile;
+  List<StrategyScheduleOverride> _strategySchedule = [];
   LoanSortOption _loanSort = LoanSortOption.nextPayment;
   bool _loaded = false;
   DateTime _syncUpdatedAt = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
@@ -60,6 +97,10 @@ class AppState extends ChangeNotifier {
   String? _syncError;
 
   List<Loan> get loans => List.unmodifiable(_loans);
+  FinancialProfile? get profile => _profile;
+  List<StrategyScheduleOverride> get strategySchedule =>
+      List.unmodifiable(_strategySchedule);
+  double? get monthlyIncome => _profile?.monthlyIncome;
   LoanSortOption get loanSort => _loanSort;
   List<Loan> get sortedLoans {
     final sorted = [..._loans];
@@ -84,7 +125,10 @@ class AppState extends ChangeNotifier {
   ComparisonResult comparisonFor(Loan loan) {
     return _cache.putIfAbsent(
       loan.id,
-      () => AmortizationEngine.compare(projectedLoan(loan)),
+      () => AmortizationEngine.compare(
+        projectedLoan(loan),
+        strategySchedule: _strategySchedule,
+      ),
     );
   }
 
@@ -166,6 +210,133 @@ class AppState extends ChangeNotifier {
 
   double get strategyExtra =>
       (paymentWithStrategies - minimumDue).clamp(0, double.infinity);
+
+  bool get hasEnabledStrategies =>
+      _loans.any((loan) => loan.extras.any((extra) => extra.enabled));
+
+  /// Projects when minimum payments return to the monthly budget, starting
+  /// from today's estimated balances and excluding every future strategy.
+  List<IncomeRelease> minimumPaymentReleases({DateTime? asOf}) {
+    final through = asOf ?? DateTime.now();
+    final grouped =
+        <int, ({DateTime date, double amount, List<String> names})>{};
+
+    for (final loan in _loans) {
+      final balance = currentBalance(loan, asOf: through);
+      if (balance <= 0.005) continue;
+
+      final firstDue = nextPaymentDate(loan, asOf: through);
+      final minimumOnlyLoan = loan.copyWith(
+        principal: balance,
+        startDate: firstDue,
+        paymentMode: PaymentMode.fixedPayment,
+        fixedMonthlyPayment: loan.monthlyPayment,
+        extras: const [],
+        progressEntries: const [],
+      );
+      final result = AmortizationEngine.simulate(minimumOnlyLoan, const []);
+      if (result.neverPaysOff) continue;
+
+      final date = result.payoffDate;
+      final key = date.year * 12 + date.month;
+      final existing = grouped[key];
+      grouped[key] = (
+        date: DateTime(date.year, date.month),
+        amount: (existing?.amount ?? 0) + loan.monthlyPayment,
+        names: [...?existing?.names, loan.name],
+      );
+    }
+
+    final releases = grouped.values.toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
+    return List.unmodifiable(
+      releases.map(
+        (release) => IncomeRelease(
+          date: release.date,
+          amount: release.amount,
+          loanNames: List.unmodifiable(release.names),
+        ),
+      ),
+    );
+  }
+
+  /// Compares future minimum-payment release dates from the same current
+  /// balances. The strategy side includes active loan extras and scheduled
+  /// strategy windows; the baseline includes required payments only.
+  List<StrategyIncomeRelease> strategyIncomeReleases({DateTime? asOf}) {
+    final through = asOf ?? DateTime.now();
+    final comparisons = <StrategyIncomeRelease>[];
+
+    for (final loan in _loans) {
+      final balance = currentBalance(loan, asOf: through);
+      if (balance <= 0.005) continue;
+
+      final firstDue = nextPaymentDate(loan, asOf: through);
+      final projected = projectedLoan(loan);
+      final futureLoan = projected.copyWith(
+        principal: balance,
+        startDate: firstDue,
+        paymentMode: PaymentMode.fixedPayment,
+        fixedMonthlyPayment: loan.monthlyPayment,
+        progressEntries: const [],
+      );
+      final minimumOnly = AmortizationEngine.simulate(futureLoan, const []);
+      final withStrategies = AmortizationEngine.simulate(
+        futureLoan,
+        futureLoan.extras,
+        strategySchedule: _strategySchedule,
+      );
+
+      comparisons.add(
+        StrategyIncomeRelease(
+          loanName: loan.name,
+          minimumPayment: loan.monthlyPayment,
+          minimumOnlyDate: minimumOnly.neverPaysOff
+              ? null
+              : minimumOnly.payoffDate,
+          strategyDate: withStrategies.neverPaysOff
+              ? null
+              : withStrategies.payoffDate,
+        ),
+      );
+    }
+
+    comparisons.sort((a, b) {
+      final aDate = a.minimumOnlyDate ?? DateTime(9999);
+      final bDate = b.minimumOnlyDate ?? DateTime(9999);
+      return aDate.compareTo(bDate);
+    });
+    return List.unmodifiable(comparisons);
+  }
+
+  /// Groups strategy-adjusted payoff dates into the same permanent income
+  /// release milestones used by the minimum-only timeline.
+  List<IncomeRelease> strategyPaymentReleases({DateTime? asOf}) {
+    final grouped =
+        <int, ({DateTime date, double amount, List<String> names})>{};
+    for (final comparison in strategyIncomeReleases(asOf: asOf)) {
+      final date = comparison.strategyDate;
+      if (date == null) continue;
+      final key = date.year * 12 + date.month;
+      final existing = grouped[key];
+      grouped[key] = (
+        date: DateTime(date.year, date.month),
+        amount: (existing?.amount ?? 0) + comparison.minimumPayment,
+        names: [...?existing?.names, comparison.loanName],
+      );
+    }
+    final releases = grouped.values.toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
+    return List.unmodifiable(
+      releases.map(
+        (release) => IncomeRelease(
+          date: release.date,
+          amount: release.amount,
+          loanNames: List.unmodifiable(release.names),
+        ),
+      ),
+    );
+  }
 
   double nextPaymentWithStrategies(Loan loan, {DateTime? asOf}) {
     final dueDate = nextPaymentDate(loan, asOf: asOf);
@@ -326,6 +497,25 @@ class AppState extends ChangeNotifier {
       _syncDeviceId = prefs.getString(_syncDeviceIdKey);
       _syncOwnerId = prefs.getString(_syncOwnerIdKey);
 
+      final profileJson = prefs.getString(_profileKey);
+      if (profileJson != null) {
+        _profile = FinancialProfile.fromJson(
+          jsonDecode(profileJson) as Map<String, dynamic>,
+        );
+      }
+
+      final scheduleJson = prefs.getString(_strategyScheduleKey);
+      if (scheduleJson != null) {
+        final list = jsonDecode(scheduleJson) as List<dynamic>;
+        _strategySchedule = list
+            .map(
+              (item) => StrategyScheduleOverride.fromJson(
+                item as Map<String, dynamic>,
+              ),
+            )
+            .toList();
+      }
+
       final loansJson = prefs.getString(_loansKey);
       if (loansJson != null) {
         final list = jsonDecode(loansJson) as List<dynamic>;
@@ -433,6 +623,18 @@ class AppState extends ChangeNotifier {
             : remote.loans
                   .map((item) => Loan.fromJson(item as Map<String, dynamic>))
                   .toList();
+        _profile = remote?.profile == null
+            ? null
+            : FinancialProfile.fromJson(remote!.profile!);
+        _strategySchedule =
+            remote?.strategySchedule
+                .map(
+                  (item) => StrategyScheduleOverride.fromJson(
+                    item as Map<String, dynamic>,
+                  ),
+                )
+                .toList() ??
+            [];
         _syncUpdatedAt =
             remote?.updatedAt ??
             DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
@@ -455,6 +657,16 @@ class AppState extends ChangeNotifier {
             merged[loan.id] = loan;
           }
           _loans = merged.values.toList();
+          _profile ??= remote.profile == null
+              ? null
+              : FinancialProfile.fromJson(remote.profile!);
+          final mergedSchedule = <String, StrategyScheduleOverride>{
+            for (final item in remote.strategySchedule)
+              (item as Map<String, dynamic>)['id'] as String:
+                  StrategyScheduleOverride.fromJson(item),
+            for (final item in _strategySchedule) item.id: item,
+          };
+          _strategySchedule = mergedSchedule.values.toList();
           final now = DateTime.now().toUtc();
           _syncUpdatedAt = now.isAfter(remote.updatedAt)
               ? now
@@ -464,7 +676,10 @@ class AppState extends ChangeNotifier {
         }
         _syncOwnerId = userId;
         await _persist(markDirty: false);
-        if (remote == null && _loans.isNotEmpty) {
+        if (remote == null &&
+            (_loans.isNotEmpty ||
+                _profile != null ||
+                _strategySchedule.isNotEmpty)) {
           await _pushSync();
         } else if (remote != null) {
           await _pushSync();
@@ -472,7 +687,9 @@ class AppState extends ChangeNotifier {
         return;
       }
       if (remote == null) {
-        if (_loans.isNotEmpty) {
+        if (_loans.isNotEmpty ||
+            _profile != null ||
+            _strategySchedule.isNotEmpty) {
           await _pushSync();
         }
         return;
@@ -481,6 +698,16 @@ class AppState extends ChangeNotifier {
       if (remote.updatedAt.isAfter(_syncUpdatedAt)) {
         _loans = remote.loans
             .map((e) => Loan.fromJson(e as Map<String, dynamic>))
+            .toList();
+        _profile = remote.profile == null
+            ? null
+            : FinancialProfile.fromJson(remote.profile!);
+        _strategySchedule = remote.strategySchedule
+            .map(
+              (item) => StrategyScheduleOverride.fromJson(
+                item as Map<String, dynamic>,
+              ),
+            )
             .toList();
         _syncUpdatedAt = remote.updatedAt;
         _syncRev = remote.rev;
@@ -512,6 +739,15 @@ class AppState extends ChangeNotifier {
       await prefs.setString(
         _loansKey,
         jsonEncode(_loans.map((l) => l.toJson()).toList()),
+      );
+      if (_profile == null) {
+        await prefs.remove(_profileKey);
+      } else {
+        await prefs.setString(_profileKey, jsonEncode(_profile!.toJson()));
+      }
+      await prefs.setString(
+        _strategyScheduleKey,
+        jsonEncode(_strategySchedule.map((item) => item.toJson()).toList()),
       );
       await prefs.setInt(_loanSortKey, _loanSort.index);
       await prefs.setString(
@@ -548,6 +784,15 @@ class AppState extends ChangeNotifier {
         : ((originalBalance - remaining) / originalBalance * 100)
               .clamp(0, 100)
               .round();
+    final income = monthlyIncome;
+    final incomeReleases = strategyPaymentReleases();
+    final totalIncomeReleased = incomeReleases.fold<double>(
+      0,
+      (sum, release) => sum + release.amount,
+    );
+    final nextIncomeRelease = incomeReleases.isEmpty
+        ? null
+        : incomeReleases.first;
 
     await LauncherWidgetService.update({
       'hasDebts': active.isNotEmpty,
@@ -558,6 +803,19 @@ class AppState extends ChangeNotifier {
       'interestSaved': totalInterestSaved,
       'paidPercent': paidPercent,
       'monthsRemaining': projected.isEmpty ? 0 : projected.length - 1,
+      'hasIncome': income != null && income > 0,
+      if (income != null && income > 0) ...{
+        'incomeAvailableNow': income - paymentWithStrategies,
+        'incomeAvailableAfterPayoffs':
+            income - minimumDue + totalIncomeReleased,
+      },
+      if (nextIncomeRelease != null) ...{
+        'nextIncomeReleaseDate': nextIncomeRelease.date.millisecondsSinceEpoch,
+        'nextIncomeReleaseAmount': nextIncomeRelease.amount,
+        'nextIncomeReleaseNames': nextIncomeRelease.loanNames.join(', '),
+      },
+      if (incomeReleases.isNotEmpty)
+        'strategyDebtFreeDate': incomeReleases.last.date.millisecondsSinceEpoch,
       if (upcoming != null) ...{
         'nextName': upcoming.name,
         'nextType': upcoming.type.label,
@@ -586,6 +844,10 @@ class AppState extends ChangeNotifier {
         accessToken,
         SyncDocument(
           loans: _loans.map((l) => l.toJson()).toList(),
+          profile: _profile?.toJson(),
+          strategySchedule: _strategySchedule
+              .map((item) => item.toJson())
+              .toList(),
           updatedAt: _syncUpdatedAt,
           rev: _syncRev,
           deviceId: _deviceId(),
@@ -594,6 +856,16 @@ class AppState extends ChangeNotifier {
       if (response.updatedAt.isAfter(_syncUpdatedAt)) {
         _loans = response.loans
             .map((e) => Loan.fromJson(e as Map<String, dynamic>))
+            .toList();
+        _profile = response.profile == null
+            ? null
+            : FinancialProfile.fromJson(response.profile!);
+        _strategySchedule = response.strategySchedule
+            .map(
+              (item) => StrategyScheduleOverride.fromJson(
+                item as Map<String, dynamic>,
+              ),
+            )
             .toList();
         _cache.clear();
       }
@@ -650,6 +922,12 @@ class AppState extends ChangeNotifier {
     await _persist();
   }
 
+  Future<void> saveProfile(FinancialProfile profile) async {
+    _profile = profile;
+    notifyListeners();
+    await _persist();
+  }
+
   Future<void> setLoanSort(LoanSortOption option) async {
     if (_loanSort == option) return;
     _loanSort = option;
@@ -697,8 +975,12 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> clearAllStrategies() async {
-    if (_loans.every((loan) => loan.extras.isEmpty)) return;
+    if (_loans.every((loan) => loan.extras.isEmpty) &&
+        _strategySchedule.isEmpty) {
+      return;
+    }
     _loans = _loans.map((loan) => loan.copyWith(extras: const [])).toList();
+    _strategySchedule = [];
     _cache.clear();
     notifyListeners();
     await _persist();
@@ -716,6 +998,44 @@ class AppState extends ChangeNotifier {
     );
   }
 
+  Future<void> addStrategyScheduleOverride(
+    StrategyScheduleOverride override,
+  ) async {
+    _strategySchedule = [..._strategySchedule, override];
+    _cache.clear();
+    notifyListeners();
+    await _persist();
+  }
+
+  Future<void> removeStrategyScheduleOverride(String id) async {
+    _strategySchedule = _strategySchedule
+        .where((item) => item.id != id)
+        .toList();
+    _cache.clear();
+    notifyListeners();
+    await _persist();
+  }
+
+  Future<void> resumeStrategyScheduleOverride(
+    String id, {
+    DateTime? asOf,
+  }) async {
+    final now = asOf ?? DateTime.now();
+    final resumeMonth = DateTime(now.year, now.month);
+    final previousMonth = DateTime(resumeMonth.year, resumeMonth.month - 1);
+    _strategySchedule = _strategySchedule
+        .map((item) {
+          if (item.id != id) return item;
+          if (!item.startMonth.isBefore(resumeMonth)) return null;
+          return item.copyWith(endMonth: previousMonth);
+        })
+        .whereType<StrategyScheduleOverride>()
+        .toList();
+    _cache.clear();
+    notifyListeners();
+    await _persist();
+  }
+
   Future<int> applyPayoffPlan(
     PlanResult plan, {
     required DateTime startDate,
@@ -729,50 +1049,78 @@ class AppState extends ChangeNotifier {
     final planStart = DateTime(startDate.year, startDate.month);
     final now = DateTime.now();
     final baseId = now.microsecondsSinceEpoch;
+    final addonsById = {for (final addon in plan.addons) addon.id: addon};
+    final allocationsByLoanId = <String, List<PlanAddonAllocation>>{};
+    for (final allocation in plan.addonAllocations) {
+      allocationsByLoanId
+          .putIfAbsent(allocation.loanId, () => [])
+          .add(allocation);
+    }
     var addedCount = 0;
     _loans = _loans.map((loan) {
       final result = resultsByLoanId[loan.id];
-      if (result == null) return loan;
-      final firstTargetMonth = result.firstTargetMonth;
-      if (firstTargetMonth == null) return loan;
-
-      final strategyStart = DateTime(
-        planStart.year,
-        planStart.month + firstTargetMonth - 1,
-      );
-      final existingSchedule = comparisonFor(loan).accelerated;
-      final existingPayoffMonth =
-          existingSchedule.payoffDate.year * 12 +
-          existingSchedule.payoffDate.month;
-      final strategyStartMonth = strategyStart.year * 12 + strategyStart.month;
-      if (!existingSchedule.neverPaysOff &&
-          existingPayoffMonth < strategyStartMonth) {
-        return loan;
-      }
-      final rolledOver = plan.loanResults
-          .where((candidate) => candidate.monthsToPayoff < firstTargetMonth)
-          .fold<double>(
-            0,
-            (sum, candidate) =>
-                sum + (loanById(candidate.loanId)?.monthlyPayment ?? 0),
+      final addonAllocations = allocationsByLoanId[loan.id] ?? const [];
+      if (result == null && addonAllocations.isEmpty) return loan;
+      final firstTargetMonth = result?.firstTargetMonth;
+      final newExtras = <ExtraPayment>[];
+      if (firstTargetMonth != null) {
+        final strategyStart = DateTime(
+          planStart.year,
+          planStart.month + firstTargetMonth - 1,
+        );
+        final existingSchedule = comparisonFor(loan).accelerated;
+        final existingPayoffMonth =
+            existingSchedule.payoffDate.year * 12 +
+            existingSchedule.payoffDate.month;
+        final strategyStartMonth =
+            strategyStart.year * 12 + strategyStart.month;
+        final startsBeforeExistingPayoff =
+            existingSchedule.neverPaysOff ||
+            existingPayoffMonth >= strategyStartMonth;
+        final rolledOver = plan.loanResults
+            .where((candidate) => candidate.monthsToPayoff < firstTargetMonth)
+            .fold<double>(
+              0,
+              (sum, candidate) =>
+                  sum + (loanById(candidate.loanId)?.monthlyPayment ?? 0),
+            );
+        final amount = plan.monthlyBudget + rolledOver;
+        if (startsBeforeExistingPayoff && amount > 0.005) {
+          newExtras.add(
+            ExtraPayment(
+              id: 'plan-$baseId-${result!.payoffOrder}',
+              name:
+                  '${plan.method.label} plan #${result.payoffOrder}: ${loan.name}',
+              amount: amount,
+              cadence: CadenceType.monthly,
+              startDate: strategyStart,
+            ),
           );
-      final amount = plan.monthlyBudget + rolledOver;
-      if (amount <= 0.005) return loan;
+        }
+      }
 
-      addedCount++;
-      return loan.copyWith(
-        extras: [
-          ...loan.extras,
+      for (var i = 0; i < addonAllocations.length; i++) {
+        final allocation = addonAllocations[i];
+        final addon = addonsById[allocation.addonId];
+        if (addon == null || allocation.amount <= 0.005) continue;
+        final paymentDate = DateTime(
+          planStart.year,
+          planStart.month + allocation.monthIndex - 1,
+        );
+        newExtras.add(
           ExtraPayment(
-            id: 'plan-$baseId-${result.payoffOrder}',
-            name:
-                '${plan.method.label} plan #${result.payoffOrder}: ${loan.name}',
-            amount: amount,
-            cadence: CadenceType.monthly,
-            startDate: strategyStart,
+            id: 'plan-addon-$baseId-${addon.id}-$i-${loan.id}',
+            name: addon.name,
+            amount: allocation.amount,
+            cadence: CadenceType.oneTime,
+            oneTimeDate: paymentDate,
           ),
-        ],
-      );
+        );
+      }
+      if (newExtras.isEmpty) return loan;
+
+      addedCount += newExtras.length;
+      return loan.copyWith(extras: [...loan.extras, ...newExtras]);
     }).toList();
 
     _cache.clear();
