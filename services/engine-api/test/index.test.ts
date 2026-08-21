@@ -23,4 +23,11 @@ describe("worker API", () => {
     expect(invalid.status).toBe(400);
     expect((await invalid.json() as { error: { code: string } }).error.code).toBe("INVALID_REQUEST");
   });
+
+  it("rejects invalid nested dates, extras, and strategy values", async () => {
+    const body = { debts: [{ ...debt, startDate: "2026-02-30", extras: [{ cadence: "everyNWeeks", amount: 10, interval: 0 }] }], strategy: { method: "avalanche", startDate: "not-a-date" } };
+    const result = await worker.fetch(new Request("https://engine.test/v1/simulations", { method: "POST", body: JSON.stringify(body) }), env);
+    expect(result.status).toBe(400);
+    expect((await result.json() as { error: { field?: string; message: string } }).error.message).toContain("startDate");
+  });
 });
