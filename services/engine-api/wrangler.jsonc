@@ -1,0 +1,1 @@
+{ "name": "debtfold-engine-api", "main": "src/index.ts", "compatibility_date": "2026-08-20", "vars": { "ALLOWED_ORIGIN": "http://localhost:4321" } }

@@ -14,7 +14,10 @@
     "mobile:deploy:web": "wrangler pages deploy apps/mobile/build/web --project-name debt-manager --branch main",
     "website:dev": "pnpm --filter debt-manager-website dev",
     "website:build": "pnpm --filter debt-manager-website build",
-    "website:deploy": "pnpm --filter debt-manager-website run deploy"
+    "website:deploy": "pnpm --filter debt-manager-website run deploy",
+    "engine:dev": "pnpm --filter debt-manager-engine-api dev",
+    "engine:test": "pnpm --filter debt-manager-engine-api test",
+    "engine:typecheck": "pnpm --filter debt-manager-engine-api typecheck"
   },
   "packageManager": "pnpm@11.7.0"
 }
