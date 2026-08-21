@@ -93,6 +93,48 @@ void main() {
     },
   );
 
+  testWidgets('sync status button pulls and pushes state on demand', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final state = AppState();
+    await state.load();
+    await state.addLoan(_testLoan('manual-sync', 'Manual sync debt'));
+    final sync = _FakeSyncService();
+    state.configureSync(sync);
+    final auth = _AuthenticatedAuthService();
+
+    await state.setSyncSession(auth.validAccessToken, userId: auth.user!.id);
+    expect(sync.fetchCount, 1);
+
+    sync.pushed = null;
+    sync.remote = SyncDocument(
+      loans: const [],
+      updatedAt: DateTime.utc(2000),
+      rev: 'stale-remote',
+    );
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AppState>.value(value: state),
+          ChangeNotifierProvider<AuthService>.value(value: auth),
+        ],
+        child: const MaterialApp(home: LoansOverviewScreen()),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('sync-button')));
+    await tester.pumpAndSettle();
+
+    expect(sync.fetchCount, 2);
+    expect(sync.pushed, isNotNull);
+    expect(
+      sync.pushed!.loans.map((item) => (item as Map<String, dynamic>)['id']),
+      contains('manual-sync'),
+    );
+  });
+
   test('continue as guest is remembered', () async {
     SharedPreferences.setMockInitialValues({});
     final auth = AuthService();
@@ -1757,12 +1799,16 @@ class _FakeSyncService extends SyncService {
 
   SyncDocument? remote;
   SyncDocument? pushed;
+  int fetchCount = 0;
 
   @override
   bool get isConfigured => true;
 
   @override
-  Future<SyncDocument?> fetchState(String accessToken) async => remote;
+  Future<SyncDocument?> fetchState(String accessToken) async {
+    fetchCount += 1;
+    return remote;
+  }
 
   @override
   Future<SyncDocument> pushState(
@@ -1773,4 +1819,21 @@ class _FakeSyncService extends SyncService {
     remote = document;
     return document;
   }
+}
+
+class _AuthenticatedAuthService extends AuthService {
+  static const _authenticatedUser = AuthUser(
+    id: 'manual-sync-user',
+    email: 'sync@example.com',
+  );
+
+  @override
+  bool get isAuthenticated => true;
+
+  @override
+  AuthUser? get user => _authenticatedUser;
+
+  @override
+  Future<String?> validAccessToken({bool forceRefresh = false}) async =>
+      'token';
 }

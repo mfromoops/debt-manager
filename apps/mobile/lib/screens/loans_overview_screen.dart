@@ -116,32 +116,38 @@ class LoansOverviewScreen extends StatelessWidget {
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  if (state.syncing)
-                                    const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: kAccentPale,
+                                  if (auth.isAuthenticated)
+                                    IconButton(
+                                      key: const Key('sync-button'),
+                                      tooltip: state.syncError == null
+                                          ? 'Sync now'
+                                          : 'Sync failed. Tap to retry.\n${state.syncError}',
+                                      visualDensity: VisualDensity.compact,
+                                      constraints: const BoxConstraints(
+                                        minWidth: 36,
+                                        minHeight: 36,
                                       ),
-                                    )
-                                  else if (state.syncError != null)
-                                    Tooltip(
-                                      message: state.syncError!,
-                                      child: const Icon(
-                                        Icons.cloud_off_outlined,
-                                        size: 20,
-                                        color: Color(0xFFB3402E),
-                                      ),
-                                    )
-                                  else if (auth.isAuthenticated)
-                                    const Tooltip(
-                                      message: 'Synced',
-                                      child: Icon(
-                                        Icons.cloud_done_outlined,
-                                        size: 20,
-                                        color: Color(0xFFB4C0B9),
-                                      ),
+                                      onPressed: state.syncing
+                                          ? null
+                                          : state.syncNow,
+                                      icon: state.syncing
+                                          ? const SizedBox(
+                                              width: 18,
+                                              height: 18,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: kAccentPale,
+                                              ),
+                                            )
+                                          : Icon(
+                                              state.syncError == null
+                                                  ? Icons.cloud_done_outlined
+                                                  : Icons.cloud_off_outlined,
+                                              size: 20,
+                                              color: state.syncError == null
+                                                  ? const Color(0xFFB4C0B9)
+                                                  : const Color(0xFFB3402E),
+                                            ),
                                     )
                                   else
                                     const Tooltip(
