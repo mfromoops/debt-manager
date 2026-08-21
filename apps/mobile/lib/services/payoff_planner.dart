@@ -56,6 +56,7 @@ class PlanResult {
   final bool neverPaysOff;
   final List<ExtraPayment> addons;
   final List<PlanAddonAllocation> addonAllocations;
+  final List<PlanRolloverAllocation> rolloverAllocations;
 
   const PlanResult({
     required this.method,
@@ -67,6 +68,7 @@ class PlanResult {
     required this.debtFreeDate,
     this.addons = const [],
     this.addonAllocations = const [],
+    this.rolloverAllocations = const [],
     this.neverPaysOff = false,
   });
 }
@@ -84,6 +86,28 @@ class PlanAddonAllocation {
     required this.monthIndex,
     required this.amount,
   });
+}
+
+/// A newly freed scheduled payment and the loan receiving it next month.
+class PlanRolloverAllocation {
+  final String sourceLoanId;
+  final String loanId;
+  final int monthIndex;
+  final double amount;
+
+  const PlanRolloverAllocation({
+    required this.sourceLoanId,
+    required this.loanId,
+    required this.monthIndex,
+    required this.amount,
+  });
+}
+
+class _PendingRollover {
+  final String sourceLoanId;
+  final double amount;
+
+  const _PendingRollover(this.sourceLoanId, this.amount);
 }
 
 class _SimLoan {
@@ -119,7 +143,11 @@ class PayoffPlanner {
     DateTime? planStart,
   }) {
     final requestedStart = planStart ?? DateTime.now();
-    final start = DateTime(requestedStart.year, requestedStart.month);
+    final start = DateTime(
+      requestedStart.year,
+      requestedStart.month,
+      requestedStart.day,
+    );
     final activeAddons = addons.where((addon) => addon.enabled).toList();
     final sims = loans
         .map((l) => _SimLoan(l, startingBalances[l.id] ?? l.principal))
@@ -128,21 +156,33 @@ class PayoffPlanner {
 
     final curve = <DebtPoint>[];
     double rolledOver = 0; // freed-up scheduled payments from paid-off loans
-    int m = 0;
+    int currentMonth = 0;
     final addonAllocations = <PlanAddonAllocation>[];
+    final rolloverAllocations = <PlanRolloverAllocation>[];
+    final pendingRollovers = <_PendingRollover>[];
 
-    while (sims.any((s) => s.balance > 0.005) && m < _maxMonths) {
-      m++;
+    while (sims.any((s) => s.balance > 0.005) && currentMonth < _maxMonths) {
+      currentMonth++;
+
+      final monthDate = DateTime(start.year, start.month + currentMonth - 1);
 
       // Sort active loans by priority: the first is this month's target.
-      final active = sims.where((s) => s.balance > 0.005).toList();
+      // A future-tracked debt remains part of the total balance, but cannot
+      // accrue interest, receive a scheduled payment, or consume shared cash
+      // until its tracking month begins.
+      final active = sims
+          .where(
+            (s) =>
+                s.balance > 0.005 &&
+                _trackingHasStartedForMonth(s.loan, monthDate),
+          )
+          .toList();
       active.sort(
         (a, b) => method == PlanMethod.avalanche
             ? b.loan.annualRate.compareTo(a.loan.annualRate)
             : a.balance.compareTo(b.balance),
       );
 
-      final monthDate = DateTime(start.year, start.month + m - 1);
       final strategyFactor = StrategyScheduleOverride.factorFor(
         monthDate,
         strategySchedule,
@@ -151,6 +191,8 @@ class PayoffPlanner {
 
       // 1) Apply scheduled payments to every active loan.
       for (final s in active) {
+        final scheduledDate = _scheduledDateForMonth(s.loan, monthDate);
+        if (currentMonth == 1 && scheduledDate.isBefore(start)) continue;
         final interest = s.balance * s.loan.monthlyRate;
         s.totalInterest += interest;
         double principal = s.loan.monthlyPayment - interest;
@@ -160,8 +202,9 @@ class PayoffPlanner {
           s.balance -= principal; // principal is negative -> grows
           principal = 0;
         } else if (principal >= s.balance) {
-          // Overpayment on final month: leftover joins this month's budget.
-          budget += principal - s.balance;
+          // The unused part of a final scheduled payment is not available
+          // until the following month. Keep it with the deferred rollover
+          // amount instead of cascading it into this month's target.
           s.balance = 0;
         } else {
           s.balance -= principal;
@@ -174,11 +217,24 @@ class PayoffPlanner {
       for (final s in active) {
         if (budget <= 0.005) break;
         if (s.balance <= 0.005) continue;
+        if (pendingRollovers.isNotEmpty) {
+          for (final rollover in pendingRollovers) {
+            rolloverAllocations.add(
+              PlanRolloverAllocation(
+                sourceLoanId: rollover.sourceLoanId,
+                loanId: s.loan.id,
+                monthIndex: currentMonth,
+                amount: rollover.amount,
+              ),
+            );
+          }
+          pendingRollovers.clear();
+        }
         final pay = budget >= s.balance ? s.balance : budget;
         s.balance -= pay;
         s.totalExtraPaid += pay;
-        s.targetedMonthIndexes.add(m);
-        s.firstTargetMonth ??= m;
+        s.targetedMonthIndexes.add(currentMonth);
+        s.firstTargetMonth ??= currentMonth;
         budget -= pay;
       }
 
@@ -186,7 +242,7 @@ class PayoffPlanner {
       // these allocations separate lets Apply Strategy reproduce them later.
       for (final addon in activeAddons) {
         double addonBudget =
-            _addonAmountForMonth(addon, start, m) * strategyFactor;
+            _addonAmountForMonth(addon, start, currentMonth) * strategyFactor;
         if (addonBudget <= 0.005) continue;
         for (final s in active) {
           if (addonBudget <= 0.005) break;
@@ -194,13 +250,13 @@ class PayoffPlanner {
           final pay = addonBudget >= s.balance ? s.balance : addonBudget;
           s.balance -= pay;
           s.totalExtraPaid += pay;
-          s.targetedMonthIndexes.add(m);
-          s.firstTargetMonth ??= m;
+          s.targetedMonthIndexes.add(currentMonth);
+          s.firstTargetMonth ??= currentMonth;
           addonAllocations.add(
             PlanAddonAllocation(
               addonId: addon.id,
               loanId: s.loan.id,
-              monthIndex: m,
+              monthIndex: currentMonth,
               amount: pay,
             ),
           );
@@ -211,17 +267,28 @@ class PayoffPlanner {
       // 4) Roll over scheduled payments of loans that just finished.
       for (final s in sims) {
         if (s.balance <= 0.005 && s.payoffMonth == null) {
-          s.payoffMonth = m;
+          s.payoffMonth = currentMonth;
           rolledOver += s.loan.monthlyPayment;
+          pendingRollovers.add(
+            _PendingRollover(s.loan.id, s.loan.monthlyPayment),
+          );
         }
       }
 
       final total = sims.fold<double>(0, (sum, s) => sum + s.balance);
-      curve.add(DebtPoint(m, total));
+      curve.add(DebtPoint(currentMonth, total));
 
       // Divergence guard: if total debt hasn't decreased over the last
       // 12 months, the plan never pays off — stop early.
-      if (m > 12 && total > 0 && total >= curve[m - 13].totalBalance) {
+      final waitingForFutureTracking = sims.any(
+        (s) =>
+            s.balance > 0.005 &&
+            !_trackingHasStartedForMonth(s.loan, monthDate),
+      );
+      if (!waitingForFutureTracking &&
+          currentMonth > 12 &&
+          total > 0 &&
+          total >= curve[currentMonth - 13].totalBalance) {
         break;
       }
     }
@@ -260,10 +327,11 @@ class PayoffPlanner {
       loanResults: results,
       curve: curve,
       totalInterest: totalInterest,
-      monthsToDebtFree: m,
-      debtFreeDate: DateTime(start.year, start.month + m - 1),
+      monthsToDebtFree: currentMonth,
+      debtFreeDate: DateTime(start.year, start.month + currentMonth - 1),
       addons: List.unmodifiable(activeAddons),
       addonAllocations: List.unmodifiable(addonAllocations),
+      rolloverAllocations: List.unmodifiable(rolloverAllocations),
       neverPaysOff: neverPaysOff,
     );
   }
@@ -306,6 +374,21 @@ class PayoffPlanner {
         }
         return total;
     }
+  }
+
+  static DateTime _scheduledDateForMonth(Loan loan, DateTime month) {
+    final lastDay = DateTime(month.year, month.month + 1, 0).day;
+    return DateTime(
+      month.year,
+      month.month,
+      loan.startDate.day.clamp(1, lastDay),
+    );
+  }
+
+  static bool _trackingHasStartedForMonth(Loan loan, DateTime month) {
+    final monthKey = month.year * 12 + month.month - 1;
+    final trackingKey = loan.startDate.year * 12 + loan.startDate.month - 1;
+    return monthKey >= trackingKey;
   }
 
   static String monthsLabel(int months) {

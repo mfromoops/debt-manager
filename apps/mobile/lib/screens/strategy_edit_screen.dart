@@ -26,8 +26,18 @@ class _StrategyEditScreenState extends State<StrategyEditScreen> {
   DateTime? _startDate;
 
   static const _months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
 
   @override
@@ -36,13 +46,18 @@ class _StrategyEditScreenState extends State<StrategyEditScreen> {
     final e = widget.existing;
     _nameCtrl = TextEditingController(text: e?.name ?? '');
     _amountCtrl = TextEditingController(
-        text: e != null ? e.amount.toStringAsFixed(0) : '');
-    _intervalCtrl =
-        TextEditingController(text: e != null ? e.interval.toString() : '8');
+      text: e != null ? e.amount.toStringAsFixed(0) : '',
+    );
+    _intervalCtrl = TextEditingController(
+      text: e != null ? e.interval.toString() : '8',
+    );
     _cadence = e?.cadence ?? CadenceType.monthly;
     _annualMonth = e?.annualMonth ?? 12;
     _oneTimeDate = e?.oneTimeDate;
-    _startDate = e?.startDate;
+    final now = DateTime.now();
+    _startDate =
+        e?.startDate ??
+        (e == null ? DateTime(now.year, now.month, now.day) : null);
   }
 
   @override
@@ -71,38 +86,61 @@ class _StrategyEditScreenState extends State<StrategyEditScreen> {
 
   void _save() {
     if (!_formKey.currentState!.validate()) return;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     if (_cadence == CadenceType.oneTime && _oneTimeDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Pick a date for the one-time payment')),
       );
       return;
     }
+    final selectedDate = _cadence == CadenceType.oneTime
+        ? _oneTimeDate
+        : _startDate;
+    final existingDate = _cadence == CadenceType.oneTime
+        ? widget.existing?.oneTimeDate
+        : widget.existing?.startDate;
+    if (selectedDate != null &&
+        selectedDate.isBefore(today) &&
+        !_sameDate(selectedDate, existingDate)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Strategies cannot start in the past.')),
+      );
+      return;
+    }
     final state = context.read<AppState>();
-    final name =
-        _nameCtrl.text.trim().isEmpty ? _defaultName() : _nameCtrl.text.trim();
+    final name = _nameCtrl.text.trim().isEmpty
+        ? _defaultName()
+        : _nameCtrl.text.trim();
     final interval = int.tryParse(_intervalCtrl.text) ?? 1;
 
     if (widget.existing != null) {
-      state.updateExtra(widget.loanId, widget.existing!.copyWith(
-        name: name,
-        amount: double.parse(_amountCtrl.text.replaceAll(',', '')),
-        cadence: _cadence,
-        interval: interval,
-        annualMonth: _annualMonth,
-        oneTimeDate: _oneTimeDate,
-        startDate: _startDate,
-      ));
+      state.updateExtra(
+        widget.loanId,
+        widget.existing!.copyWith(
+          name: name,
+          amount: double.parse(_amountCtrl.text.replaceAll(',', '')),
+          cadence: _cadence,
+          interval: interval,
+          annualMonth: _annualMonth,
+          oneTimeDate: _oneTimeDate,
+          startDate: _startDate,
+        ),
+      );
     } else {
-      state.addExtra(widget.loanId, ExtraPayment(
-        id: DateTime.now().microsecondsSinceEpoch.toString(),
-        name: name,
-        amount: double.parse(_amountCtrl.text.replaceAll(',', '')),
-        cadence: _cadence,
-        interval: interval,
-        annualMonth: _annualMonth,
-        oneTimeDate: _oneTimeDate,
-        startDate: _startDate,
-      ));
+      state.addExtra(
+        widget.loanId,
+        ExtraPayment(
+          id: DateTime.now().microsecondsSinceEpoch.toString(),
+          name: name,
+          amount: double.parse(_amountCtrl.text.replaceAll(',', '')),
+          cadence: _cadence,
+          interval: interval,
+          annualMonth: _annualMonth,
+          oneTimeDate: _oneTimeDate,
+          startDate: _startDate,
+        ),
+      );
     }
     Navigator.of(context).pop();
   }
@@ -115,7 +153,8 @@ class _StrategyEditScreenState extends State<StrategyEditScreen> {
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.existing != null;
-    final needsInterval = _cadence == CadenceType.everyNWeeks ||
+    final needsInterval =
+        _cadence == CadenceType.everyNWeeks ||
         _cadence == CadenceType.everyNMonths;
 
     return Scaffold(
@@ -135,7 +174,10 @@ class _StrategyEditScreenState extends State<StrategyEditScreen> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: kPagePadding, vertical: 16),
+          padding: const EdgeInsets.symmetric(
+            horizontal: kPagePadding,
+            vertical: 16,
+          ),
           child: Form(
             key: _formKey,
             child: Column(
@@ -147,7 +189,9 @@ class _StrategyEditScreenState extends State<StrategyEditScreen> {
                     labelText: 'Name (optional)',
                     hintText: 'e.g. Year-end bonus',
                     hintStyle: TextStyle(
-                        color: kHairline, fontWeight: FontWeight.w400),
+                      color: kHairline,
+                      fontWeight: FontWeight.w400,
+                    ),
                   ),
                   style: const TextStyle(fontSize: 16, color: kInk),
                 ),
@@ -202,10 +246,9 @@ class _StrategyEditScreenState extends State<StrategyEditScreen> {
                           keyboardType: TextInputType.number,
                           textAlign: TextAlign.center,
                           inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly
+                            FilteringTextInputFormatter.digitsOnly,
                           ],
-                          style:
-                              const TextStyle(fontSize: 18, color: kInk),
+                          style: const TextStyle(fontSize: 18, color: kInk),
                           validator: (v) {
                             if (!needsInterval) return null;
                             final n = int.tryParse(v ?? '');
@@ -244,7 +287,7 @@ class _StrategyEditScreenState extends State<StrategyEditScreen> {
                     'Payment date',
                     _oneTimeDate == null
                         ? 'Select…'
-                        : DateFormat('MMM yyyy').format(_oneTimeDate!),
+                        : DateFormat('MMM d, yyyy').format(_oneTimeDate!),
                     _pickOneTimeDate,
                   ),
                 ],
@@ -254,7 +297,7 @@ class _StrategyEditScreenState extends State<StrategyEditScreen> {
                     'Starts',
                     _startDate == null
                         ? 'From loan start'
-                        : DateFormat('MMM yyyy').format(_startDate!),
+                        : DateFormat('MMM d, yyyy').format(_startDate!),
                     _pickStartDate,
                   ),
                 ],
@@ -366,22 +409,36 @@ class _StrategyEditScreenState extends State<StrategyEditScreen> {
   }
 
   Future<void> _pickOneTimeDate() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     final picked = await showDatePicker(
       context: context,
-      initialDate: _oneTimeDate ?? DateTime.now(),
-      firstDate: DateTime(1990),
+      initialDate: _oneTimeDate != null && !_oneTimeDate!.isBefore(today)
+          ? _oneTimeDate!
+          : today,
+      firstDate: today,
       lastDate: DateTime(2070),
     );
     if (picked != null) setState(() => _oneTimeDate = picked);
   }
 
   Future<void> _pickStartDate() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     final picked = await showDatePicker(
       context: context,
-      initialDate: _startDate ?? DateTime.now(),
-      firstDate: DateTime(1990),
+      initialDate: _startDate != null && !_startDate!.isBefore(today)
+          ? _startDate!
+          : today,
+      firstDate: today,
       lastDate: DateTime(2070),
     );
     if (picked != null) setState(() => _startDate = picked);
   }
+
+  static bool _sameDate(DateTime date, DateTime? other) =>
+      other != null &&
+      date.year == other.year &&
+      date.month == other.month &&
+      date.day == other.day;
 }

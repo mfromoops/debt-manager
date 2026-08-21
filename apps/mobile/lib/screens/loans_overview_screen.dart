@@ -176,21 +176,11 @@ class LoansOverviewScreen extends StatelessWidget {
                             style: TextStyle(
                               color: kAccentPale,
                               fontSize: 10,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w500,
                               letterSpacing: 1.5,
                             ),
                           ),
                           const SizedBox(height: 8),
-                          const Text(
-                            'See the move.\nThen make it.',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 30,
-                              height: 1.08,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: -1,
-                            ),
-                          ),
                           const SizedBox(height: 22),
                           if (useWideOverview)
                             Row(
@@ -284,7 +274,7 @@ class LoansOverviewScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          'YOUR LOANS',
+                          'Loans',
                           style: TextStyle(
                             fontSize: 11,
                             letterSpacing: 1.5,
@@ -619,6 +609,10 @@ class _IncomeFreedomCard extends StatelessWidget {
         : income -
               minimumDue +
               releases.fold<double>(0, (sum, release) => sum + release.amount);
+    final inverse = compact;
+    final primaryText = inverse ? Colors.white : kInk;
+    final mutedText = inverse ? const Color(0xFFB4C0B9) : kSubtle;
+    final accentText = inverse ? kAccentPale : kAccent;
 
     return Material(
       color: Colors.transparent,
@@ -637,16 +631,20 @@ class _IncomeFreedomCard extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: kSurface,
+            color: inverse ? const Color(0xFF15201B) : kSurface,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: kBorder),
+            border: Border.all(
+              color: inverse
+                  ? Colors.white.withValues(alpha: 0.12)
+                  : kBorder,
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.trending_up, size: 16, color: kAccent),
+                  Icon(Icons.trending_up, size: 16, color: accentText),
                   SizedBox(width: 8),
                   Text(
                     'INCOME FREEDOM',
@@ -654,34 +652,34 @@ class _IncomeFreedomCard extends StatelessWidget {
                       fontSize: 10,
                       letterSpacing: 1.4,
                       fontWeight: FontWeight.w500,
-                      color: kAccent,
+                      color: accentText,
                     ),
                   ),
                   Spacer(),
-                  Icon(Icons.chevron_right, size: 18, color: kSubtle),
+                  Icon(Icons.chevron_right, size: 18, color: mutedText),
                 ],
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'How your monthly income opens up',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w400,
-                  color: kInk,
+                  color: primaryText,
                 ),
               ),
               const SizedBox(height: 3),
-              const Text(
+              Text(
                 'Strategy-adjusted release timeline',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w400,
-                  color: kSubtle,
+                  color: mutedText,
                 ),
               ),
               const SizedBox(height: 18),
               if (income == null || income <= 0)
-                const Row(
+                Row(
                   key: Key('income-freedom-add-salary'),
                   children: [
                     Expanded(
@@ -690,12 +688,12 @@ class _IncomeFreedomCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 13,
                           height: 1.4,
-                          color: kAccent,
+                          color: accentText,
                         ),
                       ),
                     ),
                     SizedBox(width: 12),
-                    Icon(Icons.arrow_forward, size: 17, color: kAccent),
+                    Icon(Icons.arrow_forward, size: 17, color: accentText),
                   ],
                 )
               else ...[
@@ -707,14 +705,15 @@ class _IncomeFreedomCard extends StatelessWidget {
                         label: 'AVAILABLE NOW',
                         value: money.format(income - minimumDue),
                         valueKey: const Key('income-freedom-now'),
+                        inverse: inverse,
                       ),
                     ),
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.fromLTRB(10, 0, 10, 8),
                       child: Icon(
                         Icons.arrow_forward,
                         size: 16,
-                        color: kSubtle,
+                        color: mutedText,
                       ),
                     ),
                     Expanded(
@@ -723,15 +722,20 @@ class _IncomeFreedomCard extends StatelessWidget {
                         value: money.format(projectedAvailable),
                         alignEnd: true,
                         valueKey: const Key('income-freedom-final'),
+                        inverse: inverse,
                       ),
                     ),
                   ],
                 ),
                 SizedBox(height: compact ? 14 : 18),
                 if (releases.isEmpty)
-                  const Text(
+                  Text(
                     'No minimum-payment release can be projected yet. Check any payment that does not cover its monthly interest.',
-                    style: TextStyle(fontSize: 12, height: 1.4, color: kSubtle),
+                    style: TextStyle(
+                      fontSize: 12,
+                      height: 1.4,
+                      color: mutedText,
+                    ),
                   )
                 else ...[
                   Semantics(
@@ -745,6 +749,7 @@ class _IncomeFreedomCard extends StatelessWidget {
                         painter: _IncomeFreedomPainter(
                           initialAvailable: income - minimumDue,
                           releases: releases,
+                          inverse: inverse,
                         ),
                       ),
                     ),
@@ -763,8 +768,8 @@ class _IncomeFreedomCard extends StatelessWidget {
                               Container(
                                 width: 6,
                                 height: 6,
-                                decoration: const BoxDecoration(
-                                  color: kAccent,
+                                decoration: BoxDecoration(
+                                  color: accentText,
                                   shape: BoxShape.circle,
                                 ),
                               ),
@@ -774,20 +779,20 @@ class _IncomeFreedomCard extends StatelessWidget {
                                   '${DateFormat('MMM yyyy').format(release.date)} · ${release.loanNames.join(', ')}',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w400,
-                                    color: kSubtle,
+                                    color: mutedText,
                                   ),
                                 ),
                               ),
                               const SizedBox(width: 8),
                               Text(
                                 '+${money.format(release.amount)}/mo',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w500,
-                                  color: kAccent,
+                                  color: accentText,
                                 ),
                               ),
                             ],
@@ -799,7 +804,7 @@ class _IncomeFreedomCard extends StatelessWidget {
                       padding: const EdgeInsets.only(top: 9),
                       child: Text(
                         '+ ${releases.length - (compact ? 1 : 2)} more milestone${releases.length - (compact ? 1 : 2) == 1 ? '' : 's'} shown in the timeline',
-                        style: const TextStyle(fontSize: 10, color: kSubtle),
+                        style: TextStyle(fontSize: 10, color: mutedText),
                       ),
                     ),
                 ],
@@ -817,12 +822,14 @@ class _IncomeFreedomValue extends StatelessWidget {
   final String value;
   final bool alignEnd;
   final Key? valueKey;
+  final bool inverse;
 
   const _IncomeFreedomValue({
     required this.label,
     required this.value,
     this.alignEnd = false,
     this.valueKey,
+    this.inverse = false,
   });
 
   @override
@@ -833,11 +840,11 @@ class _IncomeFreedomValue extends StatelessWidget {
     children: [
       Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 9,
           letterSpacing: 1,
           fontWeight: FontWeight.w500,
-          color: kSubtle,
+          color: inverse ? const Color(0xFFB4C0B9) : kSubtle,
         ),
       ),
       const SizedBox(height: 3),
@@ -846,10 +853,10 @@ class _IncomeFreedomValue extends StatelessWidget {
         key: valueKey,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 24,
           fontWeight: FontWeight.w400,
-          color: kInk,
+          color: inverse ? Colors.white : kInk,
           letterSpacing: -0.3,
         ),
       ),
@@ -860,10 +867,12 @@ class _IncomeFreedomValue extends StatelessWidget {
 class _IncomeFreedomPainter extends CustomPainter {
   final double initialAvailable;
   final List<IncomeRelease> releases;
+  final bool inverse;
 
   _IncomeFreedomPainter({
     required this.initialAvailable,
     required this.releases,
+    this.inverse = false,
   });
 
   @override
@@ -890,7 +899,9 @@ class _IncomeFreedomPainter extends CustomPainter {
     }
 
     final gridPaint = Paint()
-      ..color = kSubtle.withValues(alpha: 0.14)
+      ..color = (inverse ? const Color(0xFFB4C0B9) : kSubtle).withValues(
+        alpha: 0.14,
+      )
       ..strokeWidth = 1;
     canvas.drawLine(plot.bottomLeft, plot.bottomRight, gridPaint);
     canvas.drawLine(plot.topLeft, plot.topRight, gridPaint);
@@ -904,10 +915,23 @@ class _IncomeFreedomPainter extends CustomPainter {
       path.lineTo(x, yFor(available));
     }
     path.lineTo(plot.right, yFor(available));
+    final area = Path.from(path)
+      ..lineTo(plot.right, plot.bottom)
+      ..lineTo(plot.left, plot.bottom)
+      ..close();
+    canvas.drawPath(
+      area,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0x4D91C2A8), Color(0x0091C2A8)],
+        ).createShader(plot),
+    );
     canvas.drawPath(
       path,
       Paint()
-        ..color = kAccent
+        ..color = inverse ? kAccentPale : kAccent
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.2
         ..strokeCap = StrokeCap.round
@@ -932,11 +956,11 @@ class _IncomeFreedomPainter extends CustomPainter {
     final painter = TextPainter(
       text: TextSpan(
         text: text,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 8,
           letterSpacing: 0.7,
           fontWeight: FontWeight.w500,
-          color: kSubtle,
+          color: inverse ? const Color(0xFFB4C0B9) : kSubtle,
         ),
       ),
       textDirection: ui.TextDirection.ltr,

@@ -20,16 +20,15 @@ class PlannerScreen extends StatefulWidget {
 class _PlannerScreenState extends State<PlannerScreen> {
   PlanMethod _method = PlanMethod.avalanche;
   double _budget = 200;
-  DateTime _strategyStartDate = DateTime(
-    DateTime.now().year,
-    DateTime.now().month,
-  );
+  late DateTime _strategyStartDate;
   late final TextEditingController _budgetCtrl;
   final List<ExtraPayment> _addons = [];
 
   @override
   void initState() {
     super.initState();
+    final now = DateTime.now();
+    _strategyStartDate = DateTime(now.year, now.month, now.day);
     _budgetCtrl = TextEditingController(text: _budget.toStringAsFixed(0));
   }
 
@@ -47,6 +46,14 @@ class _PlannerScreenState extends State<PlannerScreen> {
   }
 
   Future<void> _applyPlan(PlanResult planned) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    if (_strategyStartDate.isBefore(today)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Strategies cannot start in the past.')),
+      );
+      return;
+    }
     if (planned.neverPaysOff || planned.loanResults.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -75,15 +82,17 @@ class _PlannerScreenState extends State<PlannerScreen> {
   }
 
   Future<void> _pickStrategyStartDate() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     final picked = await showDatePicker(
       context: context,
       initialDate: _strategyStartDate,
-      firstDate: DateTime(1990),
+      firstDate: today,
       lastDate: DateTime(2070),
     );
     if (picked == null) return;
     setState(() {
-      _strategyStartDate = DateTime(picked.year, picked.month);
+      _strategyStartDate = DateTime(picked.year, picked.month, picked.day);
       for (var i = 0; i < _addons.length; i++) {
         final addon = _addons[i];
         if (addon.cadence == CadenceType.everyNMonths) {
@@ -173,7 +182,10 @@ class _PlannerScreenState extends State<PlannerScreen> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: kPagePadding, vertical: 8),
+          padding: const EdgeInsets.symmetric(
+            horizontal: kPagePadding,
+            vertical: 8,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -430,7 +442,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
               const Divider(),
               _pickerRow(
                 'Strategy starts',
-                DateFormat('MMM yyyy').format(_strategyStartDate),
+                DateFormat('MMM d, yyyy').format(_strategyStartDate),
                 _pickStrategyStartDate,
               ),
               const SizedBox(height: 24),
@@ -843,6 +855,15 @@ class _PlanAddonEditorState extends State<_PlanAddonEditor> {
       );
       return;
     }
+    if (_cadence == CadenceType.oneTime &&
+        _oneTimeDate!.isBefore(widget.defaultStart)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Add-on payments cannot predate the strategy.'),
+        ),
+      );
+      return;
+    }
     final amount = double.parse(_amountController.text.replaceAll(',', ''));
     final interval = int.tryParse(_intervalController.text) ?? 1;
     Navigator.of(context).pop(
@@ -993,18 +1014,27 @@ class _PlanAddonEditorState extends State<_PlanAddonEditor> {
                 const SizedBox(height: 20),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Payment month'),
+                  title: const Text('Payment date'),
                   trailing: Text(
                     _oneTimeDate == null
                         ? 'Choose…'
-                        : DateFormat('MMM yyyy').format(_oneTimeDate!),
+                        : DateFormat('MMM d, yyyy').format(_oneTimeDate!),
                     style: const TextStyle(color: kAccent),
                   ),
                   onTap: () async {
+                    final now = DateTime.now();
+                    final today = DateTime(now.year, now.month, now.day);
+                    final firstDate = widget.defaultStart.isAfter(today)
+                        ? widget.defaultStart
+                        : today;
                     final picked = await showDatePicker(
                       context: context,
-                      initialDate: _oneTimeDate ?? widget.defaultStart,
-                      firstDate: DateTime(1990),
+                      initialDate:
+                          _oneTimeDate != null &&
+                              !_oneTimeDate!.isBefore(firstDate)
+                          ? _oneTimeDate!
+                          : firstDate,
+                      firstDate: firstDate,
                       lastDate: DateTime(2070),
                     );
                     if (picked != null) setState(() => _oneTimeDate = picked);

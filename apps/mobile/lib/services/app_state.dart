@@ -21,7 +21,7 @@ enum LoanSortOption {
   interestRate,
 }
 
-/// A month when one or more required debt payments disappear from the
+/// A date when one or more required debt payments disappear from the
 /// household budget. This projection deliberately ignores extra-payment
 /// strategies.
 class IncomeRelease {
@@ -238,10 +238,10 @@ class AppState extends ChangeNotifier {
       if (result.neverPaysOff) continue;
 
       final date = result.payoffDate;
-      final key = date.year * 12 + date.month;
+      final key = date.year * 10000 + date.month * 100 + date.day;
       final existing = grouped[key];
       grouped[key] = (
-        date: DateTime(date.year, date.month),
+        date: date,
         amount: (existing?.amount ?? 0) + loan.monthlyPayment,
         names: [...?existing?.names, loan.name],
       );
@@ -317,10 +317,10 @@ class AppState extends ChangeNotifier {
     for (final comparison in strategyIncomeReleases(asOf: asOf)) {
       final date = comparison.strategyDate;
       if (date == null) continue;
-      final key = date.year * 12 + date.month;
+      final key = date.year * 10000 + date.month * 100 + date.day;
       final existing = grouped[key];
       grouped[key] = (
-        date: DateTime(date.year, date.month),
+        date: date,
         amount: (existing?.amount ?? 0) + comparison.minimumPayment,
         names: [...?existing?.names, comparison.loanName],
       );
@@ -1046,7 +1046,7 @@ class AppState extends ChangeNotifier {
       for (final result in plan.loanResults) result.loanId: result,
     };
 
-    final planStart = DateTime(startDate.year, startDate.month);
+    final planStart = DateTime(startDate.year, startDate.month, startDate.day);
     final now = DateTime.now();
     final baseId = now.microsecondsSinceEpoch;
     final addonsById = {for (final addon in plan.addons) addon.id: addon};
@@ -1064,10 +1064,31 @@ class AppState extends ChangeNotifier {
       final firstTargetMonth = result?.firstTargetMonth;
       final newExtras = <ExtraPayment>[];
       if (firstTargetMonth != null) {
-        final strategyStart = DateTime(
+        final strategyMonth = DateTime(
           planStart.year,
           planStart.month + firstTargetMonth - 1,
         );
+        final lastDay = DateTime(
+          strategyMonth.year,
+          strategyMonth.month + 1,
+          0,
+        ).day;
+        var strategyStart = DateTime(
+          strategyMonth.year,
+          strategyMonth.month,
+          loan.startDate.day.clamp(1, lastDay),
+        );
+        if (strategyStart.isBefore(planStart)) {
+          final nextMonth = DateTime(
+            strategyStart.year,
+            strategyStart.month + 1,
+          );
+          strategyStart = DateTime(
+            nextMonth.year,
+            nextMonth.month,
+            _clampDay(loan.startDate.day, nextMonth.year, nextMonth.month),
+          );
+        }
         final existingSchedule = comparisonFor(loan).accelerated;
         final existingPayoffMonth =
             existingSchedule.payoffDate.year * 12 +
@@ -1097,6 +1118,66 @@ class AppState extends ChangeNotifier {
             ),
           );
         }
+      }
+
+      final rolloverAllocations = plan.rolloverAllocations.where(
+        (allocation) => allocation.loanId == loan.id,
+      );
+      for (final allocation in rolloverAllocations) {
+        // The base strategy extra already contains every payment released
+        // before this loan first became the target. Only persist later
+        // releases as incremental recurring tranches.
+        if (firstTargetMonth == null ||
+            allocation.monthIndex <= firstTargetMonth) {
+          continue;
+        }
+        final strategyMonth = DateTime(
+          planStart.year,
+          planStart.month + allocation.monthIndex - 1,
+        );
+        var strategyStart = DateTime(
+          strategyMonth.year,
+          strategyMonth.month,
+          _clampDay(
+            loan.startDate.day,
+            strategyMonth.year,
+            strategyMonth.month,
+          ),
+        );
+        if (strategyStart.isBefore(planStart)) {
+          final nextMonth = DateTime(
+            strategyStart.year,
+            strategyStart.month + 1,
+          );
+          strategyStart = DateTime(
+            nextMonth.year,
+            nextMonth.month,
+            _clampDay(loan.startDate.day, nextMonth.year, nextMonth.month),
+          );
+        }
+        final existingSchedule = comparisonFor(loan).accelerated;
+        final existingPayoffMonth =
+            existingSchedule.payoffDate.year * 12 +
+            existingSchedule.payoffDate.month;
+        final strategyStartMonth =
+            strategyStart.year * 12 + strategyStart.month;
+        final startsBeforeExistingPayoff =
+            existingSchedule.neverPaysOff ||
+            existingPayoffMonth >= strategyStartMonth;
+        if (!startsBeforeExistingPayoff || allocation.amount <= 0.005) {
+          continue;
+        }
+        final sourceName =
+            loanById(allocation.sourceLoanId)?.name ?? 'paid-off debt';
+        newExtras.add(
+          ExtraPayment(
+            id: 'plan-rollover-$baseId-${allocation.sourceLoanId}-${allocation.monthIndex}-${loan.id}',
+            name: '${plan.method.label} rollover from $sourceName',
+            amount: allocation.amount,
+            cadence: CadenceType.monthly,
+            startDate: strategyStart,
+          ),
+        );
       }
 
       for (var i = 0; i < addonAllocations.length; i++) {

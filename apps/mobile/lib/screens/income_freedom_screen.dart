@@ -285,7 +285,7 @@ class _Timeline extends StatelessWidget {
             ? 'income-strategy-timeline-release-$index'
             : 'income-timeline-release-$index',
       ),
-      date: DateFormat('MMMM yyyy').format(release.date),
+      date: DateFormat('MMMM d, yyyy').format(release.date),
       title: release.loanNames.join(', '),
       detail: '+${money.format(release.amount)}/month freed',
       available: money.format(available),
@@ -567,7 +567,7 @@ class _StrategyComparisonRow extends StatelessWidget {
   }
 
   static String _dateLabel(DateTime? date) =>
-      date == null ? 'Not projected' : DateFormat('MMM yyyy').format(date);
+      date == null ? 'Not projected' : DateFormat('MMM d, yyyy').format(date);
 
   static int? _monthsSooner(DateTime? baseline, DateTime? strategy) {
     if (baseline == null || strategy == null) return null;

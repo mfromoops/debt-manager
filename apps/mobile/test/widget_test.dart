@@ -11,6 +11,7 @@ import 'package:flutter_app/screens/dashboard_screen.dart';
 import 'package:flutter_app/screens/loans_overview_screen.dart';
 import 'package:flutter_app/screens/planner_screen.dart';
 import 'package:flutter_app/screens/profile_screen.dart';
+import 'package:flutter_app/screens/strategy_edit_screen.dart';
 import 'package:flutter_app/services/app_state.dart';
 import 'package:flutter_app/services/amortization_engine.dart';
 import 'package:flutter_app/services/auth_service.dart';
@@ -18,6 +19,7 @@ import 'package:flutter_app/services/payoff_planner.dart';
 import 'package:flutter_app/services/sync_service.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart';
 
 void main() {
   test('guest debts merge into the account on first sign in', () async {
@@ -208,6 +210,46 @@ void main() {
       lessThan(comparison.baseline.monthsToPayoff),
     );
     expect(comparison.interestSaved, greaterThan(0));
+  });
+
+  test('Individual strategy does not apply before its exact start day', () {
+    final loan = Loan(
+      id: 'dated-individual-strategy',
+      name: 'Dated strategy loan',
+      type: LoanType.personalLoan,
+      principal: 200,
+      annualRate: 0,
+      startDate: DateTime(2026, 8, 1),
+      paymentMode: PaymentMode.fixedPayment,
+      fixedMonthlyPayment: 100,
+    );
+    final result = AmortizationEngine.simulate(loan, [
+      ExtraPayment(
+        id: 'starts-late',
+        name: 'Starts August 28',
+        amount: 100,
+        cadence: CadenceType.monthly,
+        startDate: DateTime(2026, 8, 28),
+      ),
+    ]);
+
+    expect(result.schedule.first.extra, 100);
+    expect(result.payoffDate, DateTime(2026, 8, 28));
+  });
+
+  testWidgets('New individual strategies default to today', (tester) async {
+    final now = DateTime.now();
+    await tester.pumpWidget(
+      ChangeNotifierProvider(
+        create: (_) => AppState(),
+        child: const MaterialApp(
+          home: StrategyEditScreen(loanId: 'new-strategy-loan'),
+        ),
+      ),
+    );
+
+    expect(find.text(DateFormat('MMM d, yyyy').format(now)), findsOneWidget);
+    expect(find.text('From loan start'), findsNothing);
   });
 
   test('Credit card with fixed payment pays off', () {
@@ -625,10 +667,10 @@ void main() {
     final releases = state.minimumPaymentReleases(asOf: DateTime(2026, 8, 19));
 
     expect(releases, hasLength(2));
-    expect(releases.first.date, DateTime(2026, 10));
+    expect(releases.first.date, DateTime(2026, 10, 15));
     expect(releases.first.amount, closeTo(500, 0.01));
     expect(releases.first.loanNames, ['Short loan']);
-    expect(releases.last.date, DateTime(2026, 11));
+    expect(releases.last.date, DateTime(2026, 11, 20));
     expect(releases.last.amount, closeTo(100, 0.01));
 
     final comparisons = state.strategyIncomeReleases(
@@ -637,14 +679,14 @@ void main() {
     final accelerated = comparisons.firstWhere(
       (comparison) => comparison.loanName == 'Short loan',
     );
-    expect(accelerated.minimumOnlyDate, DateTime(2026, 10));
-    expect(accelerated.strategyDate, DateTime(2026, 9));
+    expect(accelerated.minimumOnlyDate, DateTime(2026, 10, 15));
+    expect(accelerated.strategyDate, DateTime(2026, 9, 15));
     expect(accelerated.minimumPayment, closeTo(500, 0.01));
 
     final strategyReleases = state.strategyPaymentReleases(
       asOf: DateTime(2026, 8, 19),
     );
-    expect(strategyReleases.first.date, DateTime(2026, 9));
+    expect(strategyReleases.first.date, DateTime(2026, 9, 15));
     expect(strategyReleases.first.amount, closeTo(500, 0.01));
     expect(strategyReleases.first.loanNames, ['Short loan']);
   });
@@ -1145,6 +1187,246 @@ void main() {
       expect(cardResult.firstTargetMonth, 1);
     });
 
+    test(
+      'Defers a future-tracked debt and its rollover until valid months',
+      () {
+        final loans = [
+          Loan(
+            id: 'final',
+            name: 'Citi Diamond',
+            type: LoanType.personalLoan,
+            principal: 180,
+            annualRate: 0,
+            startDate: DateTime(2026, 9, 23),
+            paymentMode: PaymentMode.fixedPayment,
+            fixedMonthlyPayment: 180,
+          ),
+          Loan(
+            id: 'target',
+            name: 'Next target',
+            type: LoanType.personalLoan,
+            principal: 2000,
+            annualRate: 0.5,
+            startDate: DateTime(2026, 8, 1),
+            paymentMode: PaymentMode.amortized,
+            termMonths: 24,
+          ),
+        ];
+
+        final plan = PayoffPlanner.plan(
+          loans: loans,
+          startingBalances: balancesOf(loans),
+          method: PlanMethod.snowball,
+          monthlyBudget: 0,
+          planStart: DateTime(2026, 8, 20),
+        );
+
+        final finalResult = plan.loanResults.firstWhere(
+          (result) => result.loanId == 'final',
+        );
+        final targetResult = plan.loanResults.firstWhere(
+          (result) => result.loanId == 'target',
+        );
+
+        expect(finalResult.payoffDate, DateTime(2026, 9));
+        expect(finalResult.monthsToPayoff, 2);
+        expect(targetResult.targetedMonths, 7);
+        expect(targetResult.firstTargetMonth, 3);
+      },
+    );
+
+    test(
+      'Applies each naturally released Avalanche payment as a new rollover',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final loans = [
+          Loan(
+            id: 'final',
+            name: 'Citi Diamond 1',
+            type: LoanType.personalLoan,
+            principal: 180,
+            annualRate: 0,
+            startDate: DateTime(2026, 9, 23),
+            paymentMode: PaymentMode.fixedPayment,
+            fixedMonthlyPayment: 180,
+          ),
+          Loan(
+            id: 'final-1',
+            name: 'Citi Diamond 2',
+            type: LoanType.personalLoan,
+            principal: 200,
+            annualRate: 0,
+            startDate: DateTime(2026, 9, 23),
+            paymentMode: PaymentMode.fixedPayment,
+            fixedMonthlyPayment: 100,
+          ),
+          Loan(
+            id: 'final-2',
+            name: 'Citi Diamond 3',
+            type: LoanType.personalLoan,
+            principal: 300,
+            annualRate: 0,
+            startDate: DateTime(2026, 9, 23),
+            paymentMode: PaymentMode.fixedPayment,
+            fixedMonthlyPayment: 100,
+          ),
+          Loan(
+            id: 'target',
+            name: 'Next target',
+            type: LoanType.personalLoan,
+            principal: 2000,
+            annualRate: 0.5,
+            startDate: DateTime(2026, 8, 1),
+            paymentMode: PaymentMode.amortized,
+            termMonths: 24,
+          ),
+        ];
+        final state = AppState();
+        for (final loan in loans) {
+          await state.addLoan(loan);
+        }
+        final plan = PayoffPlanner.plan(
+          loans: loans,
+          startingBalances: balancesOf(loans),
+          method: PlanMethod.avalanche,
+          monthlyBudget: 0,
+          planStart: DateTime(2026, 8, 20),
+        );
+
+        expect(
+          ['final', 'final-1', 'final-2']
+              .map(
+                (loanId) => plan.loanResults
+                    .firstWhere((result) => result.loanId == loanId)
+                    .monthsToPayoff,
+              )
+              .toList(),
+          [2, 3, 4],
+        );
+        expect(
+          plan.loanResults
+              .firstWhere((result) => result.loanId == 'target')
+              .firstTargetMonth,
+          3,
+        );
+
+        await state.applyPayoffPlan(plan, startDate: DateTime(2026, 8, 20));
+
+        final targetExtras = state.loanById('target')!.extras;
+        expect(targetExtras, hasLength(3));
+        expect(targetExtras.map((extra) => extra.startDate).toList(), [
+          DateTime(2026, 10, 1),
+          DateTime(2026, 11, 1),
+          DateTime(2026, 12, 1),
+        ]);
+        expect(targetExtras.map((extra) => extra.amount).toList(), [
+          180,
+          100,
+          100,
+        ]);
+      },
+    );
+
+    test('Does not target a debt before its future tracking month', () {
+      final loans = [
+        Loan(
+          id: 'future',
+          name: 'Future-tracked debt',
+          type: LoanType.personalLoan,
+          principal: 50,
+          annualRate: 0,
+          startDate: DateTime(2026, 9, 23),
+          paymentMode: PaymentMode.fixedPayment,
+          fixedMonthlyPayment: 10,
+        ),
+        Loan(
+          id: 'current',
+          name: 'Current debt',
+          type: LoanType.personalLoan,
+          principal: 500,
+          annualRate: 0,
+          startDate: DateTime(2026, 8, 1),
+          paymentMode: PaymentMode.fixedPayment,
+          fixedMonthlyPayment: 10,
+        ),
+      ];
+
+      final plan = PayoffPlanner.plan(
+        loans: loans,
+        startingBalances: balancesOf(loans),
+        method: PlanMethod.snowball,
+        monthlyBudget: 100,
+        planStart: DateTime(2026, 8, 20),
+      );
+      final futureResult = plan.loanResults.firstWhere(
+        (result) => result.loanId == 'future',
+      );
+
+      expect(futureResult.firstTargetMonth, 2);
+    });
+
+    test('Waits beyond the divergence window for future tracking', () {
+      final loan = Loan(
+        id: 'far-future',
+        name: 'Far-future debt',
+        type: LoanType.personalLoan,
+        principal: 100,
+        annualRate: 0,
+        startDate: DateTime(2027, 10, 1),
+        paymentMode: PaymentMode.fixedPayment,
+        fixedMonthlyPayment: 100,
+      );
+
+      final plan = PayoffPlanner.plan(
+        loans: [loan],
+        startingBalances: {loan.id: loan.principal},
+        method: PlanMethod.snowball,
+        monthlyBudget: 0,
+        planStart: DateTime(2026, 8, 20),
+      );
+
+      expect(plan.neverPaysOff, isFalse);
+      expect(plan.loanResults.single.monthsToPayoff, 15);
+    });
+
+    test('Does not replay payments due before a mid-month plan start', () {
+      final loans = [
+        Loan(
+          id: 'early',
+          name: 'Early-month debt',
+          type: LoanType.creditCard,
+          principal: 1000,
+          annualRate: 0,
+          startDate: DateTime(2026, 1, 1),
+          paymentMode: PaymentMode.fixedPayment,
+          fixedMonthlyPayment: 133,
+        ),
+        Loan(
+          id: 'late',
+          name: 'Late-month debt',
+          type: LoanType.personalLoan,
+          principal: 180,
+          annualRate: 0,
+          startDate: DateTime(2026, 1, 23),
+          paymentMode: PaymentMode.fixedPayment,
+          fixedMonthlyPayment: 180,
+        ),
+      ];
+
+      final plan = PayoffPlanner.plan(
+        loans: loans,
+        startingBalances: balancesOf(loans),
+        method: PlanMethod.avalanche,
+        monthlyBudget: 0,
+        planStart: DateTime(2026, 8, 28),
+      );
+      final lateResult = plan.loanResults.firstWhere(
+        (result) => result.loanId == 'late',
+      );
+
+      expect(lateResult.monthsToPayoff, 2);
+    });
+
     test('Applies only to recipients at their actual target month', () async {
       SharedPreferences.setMockInitialValues({});
       final loans = [
@@ -1198,13 +1480,73 @@ void main() {
       expect(added, 2);
       expect(
         state.loanById('card')!.extras.single.startDate,
-        DateTime(2026, 4),
+        DateTime(2026, 5),
       );
       expect(
         state.loanById('tiny')!.extras.single.startDate,
-        DateTime(2026, 4),
+        DateTime(2026, 5),
       );
       expect(state.loanById('scheduled')!.extras, isEmpty);
+    });
+
+    test('Starts an applied strategy on each debt payment date', () async {
+      SharedPreferences.setMockInitialValues({});
+      final loan = Loan(
+        id: 'late',
+        name: 'Late-month debt',
+        type: LoanType.creditCard,
+        principal: 5000,
+        annualRate: 22,
+        startDate: DateTime(2026, 1, 23),
+        paymentMode: PaymentMode.fixedPayment,
+        fixedMonthlyPayment: 180,
+      );
+      final state = AppState();
+      await state.addLoan(loan);
+      final plan = PayoffPlanner.plan(
+        loans: [loan],
+        startingBalances: {loan.id: loan.principal},
+        method: PlanMethod.avalanche,
+        monthlyBudget: 100,
+        planStart: DateTime(2026, 9),
+      );
+
+      await state.applyPayoffPlan(plan, startDate: DateTime(2026, 9));
+
+      expect(
+        state.loanById(loan.id)!.extras.single.startDate,
+        DateTime(2026, 9, 23),
+      );
+    });
+
+    test('Never backdates an applied strategy before its plan start', () async {
+      SharedPreferences.setMockInitialValues({});
+      final loan = Loan(
+        id: 'month-start',
+        name: 'Month-start debt',
+        type: LoanType.creditCard,
+        principal: 5000,
+        annualRate: 22,
+        startDate: DateTime(2026, 1, 1),
+        paymentMode: PaymentMode.fixedPayment,
+        fixedMonthlyPayment: 133,
+      );
+      final state = AppState();
+      await state.addLoan(loan);
+      final plan = PayoffPlanner.plan(
+        loans: [loan],
+        startingBalances: {loan.id: loan.principal},
+        method: PlanMethod.avalanche,
+        monthlyBudget: 100,
+        planStart: DateTime(2026, 8, 28),
+      );
+
+      await state.applyPayoffPlan(plan, startDate: DateTime(2026, 8, 28));
+
+      expect(
+        state.loanById(loan.id)!.extras.single.startDate,
+        DateTime(2026, 9, 1),
+      );
     });
 
     test(

@@ -84,6 +84,7 @@ class AmortizationEngine {
 
     // Pre-compute week-based payment dates for everyNWeeks cadence.
     final weeklyExtraByMonth = <int, double>{};
+    final weeklyLastDateByMonth = <int, DateTime>{};
     // Bound: amortized -> term + buffer; fixed payment -> 50 years max.
     final maxMonths = loan.paymentMode == PaymentMode.amortized
         ? loan.termMonths + 240
@@ -99,6 +100,10 @@ class AmortizationEngine {
       while (d.isBefore(end)) {
         final key = d.year * 12 + (d.month - 1);
         weeklyExtraByMonth[key] = (weeklyExtraByMonth[key] ?? 0) + e.amount;
+        final previous = weeklyLastDateByMonth[key];
+        if (previous == null || d.isAfter(previous)) {
+          weeklyLastDateByMonth[key] = d;
+        }
         d = d.add(Duration(days: 7 * e.interval));
       }
     }
@@ -107,11 +112,9 @@ class AmortizationEngine {
     bool stalled = false;
     while (balance > 0.005 && m < maxMonths) {
       m++;
-      final date = DateTime(
-        loan.startDate.year,
-        loan.startDate.month + m - 1,
-        1,
-      );
+      final month = DateTime(loan.startDate.year, loan.startDate.month + m - 1);
+      final scheduledDate = _dateInMonth(month, loan.startDate.day);
+      var rowDate = scheduledDate;
 
       final interest = balance * r;
       double scheduled = monthlyPayment;
@@ -119,23 +122,30 @@ class AmortizationEngine {
 
       // Extra principal for this month
       double extra = 0;
-      final monthKey = date.year * 12 + (date.month - 1);
+      DateTime? latestExtraDate;
+      final monthKey = month.year * 12 + (month.month - 1);
       for (final e in activeExtras) {
         final start = e.startDate ?? loan.startDate;
         final startKey = start.year * 12 + (start.month - 1);
+        DateTime? occurrenceDate;
         switch (e.cadence) {
           case CadenceType.monthly:
-            if (monthKey >= startKey) extra += e.amount;
+            if (monthKey >= startKey) {
+              extra += e.amount;
+              occurrenceDate = _dateInMonth(month, start.day);
+            }
             break;
           case CadenceType.annual:
-            if (monthKey >= startKey && date.month == e.annualMonth) {
+            if (monthKey >= startKey && month.month == e.annualMonth) {
               extra += e.amount;
+              occurrenceDate = _dateInMonth(month, start.day);
             }
             break;
           case CadenceType.everyNMonths:
             if (monthKey >= startKey &&
                 (monthKey - startKey) % e.interval == 0) {
               extra += e.amount;
+              occurrenceDate = _dateInMonth(month, start.day);
             }
             break;
           case CadenceType.everyNWeeks:
@@ -143,14 +153,26 @@ class AmortizationEngine {
             break;
           case CadenceType.oneTime:
             final d = e.oneTimeDate;
-            if (d != null && d.year == date.year && d.month == date.month) {
+            if (d != null && d.year == month.year && d.month == month.month) {
               extra += e.amount;
+              occurrenceDate = d;
             }
             break;
         }
+        if (occurrenceDate != null &&
+            (latestExtraDate == null ||
+                occurrenceDate.isAfter(latestExtraDate))) {
+          latestExtraDate = occurrenceDate;
+        }
       }
       extra += weeklyExtraByMonth[monthKey] ?? 0;
-      extra *= StrategyScheduleOverride.factorFor(date, strategySchedule);
+      final weeklyLastDate = weeklyLastDateByMonth[monthKey];
+      if (weeklyLastDate != null &&
+          (latestExtraDate == null ||
+              weeklyLastDate.isAfter(latestExtraDate))) {
+        latestExtraDate = weeklyLastDate;
+      }
+      extra *= StrategyScheduleOverride.factorFor(month, strategySchedule);
 
       // If principal part is not positive and no extra, the balance grows —
       // clamp scheduled payment to cover at least interest so the schedule
@@ -165,7 +187,7 @@ class AmortizationEngine {
         schedule.add(
           MonthRow(
             monthIndex: m,
-            date: date,
+            date: scheduledDate,
             payment: scheduled,
             extra: 0,
             interest: interest,
@@ -189,6 +211,9 @@ class AmortizationEngine {
           extra = 0;
         } else {
           extra = balance - principalPart;
+          if (latestExtraDate != null && latestExtraDate.isAfter(rowDate)) {
+            rowDate = latestExtraDate;
+          }
         }
         balance = 0;
       } else {
@@ -201,7 +226,7 @@ class AmortizationEngine {
       schedule.add(
         MonthRow(
           monthIndex: m,
-          date: date,
+          date: rowDate,
           payment: scheduled,
           extra: extra,
           interest: interest,
@@ -224,6 +249,11 @@ class AmortizationEngine {
       payoffDate: payoffDate,
       neverPaysOff: neverPaysOff,
     );
+  }
+
+  static DateTime _dateInMonth(DateTime month, int day) {
+    final lastDay = DateTime(month.year, month.month + 1, 0).day;
+    return DateTime(month.year, month.month, day.clamp(1, lastDay));
   }
 
   static ComparisonResult compare(
