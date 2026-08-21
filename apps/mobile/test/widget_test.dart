@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_app/main.dart' as app;
 import 'package:flutter_app/models/loan.dart';
 import 'package:flutter_app/models/extra_payment.dart';
 import 'package:flutter_app/models/progress_entry.dart';
@@ -133,6 +134,34 @@ void main() {
       sync.pushed!.loans.map((item) => (item as Map<String, dynamic>)['id']),
       contains('manual-sync'),
     );
+  });
+
+  testWidgets('returning to the app syncs authenticated state', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final state = AppState();
+    await state.load();
+    await state.addLoan(_testLoan('resume-sync', 'Resume sync debt'));
+    final sync = _FakeSyncService();
+    state.configureSync(sync);
+    final auth = _AuthenticatedAuthService();
+    await state.setSyncSession(auth.validAccessToken, userId: auth.user!.id);
+    expect(sync.fetchCount, 1);
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AppState>.value(value: state),
+          ChangeNotifierProvider<AuthService>.value(value: auth),
+        ],
+        child: const app.DebtManagerApp(),
+      ),
+    );
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+
+    expect(sync.fetchCount, 2);
   });
 
   test('continue as guest is remembered', () async {
@@ -1829,6 +1858,9 @@ class _AuthenticatedAuthService extends AuthService {
 
   @override
   bool get isAuthenticated => true;
+
+  @override
+  bool get loaded => true;
 
   @override
   AuthUser? get user => _authenticatedUser;

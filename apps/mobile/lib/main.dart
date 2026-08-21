@@ -50,8 +50,34 @@ void main() {
   );
 }
 
-class DebtManagerApp extends StatelessWidget {
+class DebtManagerApp extends StatefulWidget {
   const DebtManagerApp({super.key});
+
+  @override
+  State<DebtManagerApp> createState() => _DebtManagerAppState();
+}
+
+class _DebtManagerAppState extends State<DebtManagerApp>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed || !mounted) return;
+    if (context.read<AuthService>().isAuthenticated) {
+      unawaited(context.read<AppState>().syncNow());
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
